@@ -23,16 +23,22 @@ def load_fund():
 df_credit = load_credit()
 df_fund   = load_fund()
 
+# 단위 변환: 원 → 억원
+def to_uk(x):
+    return x / 100000000
+
 if df_credit.empty:
     st.warning("아직 수집된 데이터가 없습니다. 첫 수집은 평일 오후 6시에 자동 실행됩니다.")
 else:
     df_credit["base_date"] = pd.to_datetime(df_credit["base_date"])
     df_credit = df_credit.sort_values("base_date").reset_index(drop=True)
 
+    for col in ["total", "kospi", "kosdaq"]:
+        df_credit[col] = df_credit[col].apply(to_uk)
+
     latest = df_credit.iloc[-1]
     prev   = df_credit.iloc[-2] if len(df_credit) > 1 else latest
 
-    # ── 요약 카드 (단위: 억원) ──
     col1, col2, col3 = st.columns(3)
     col1.metric("전체 융자잔고",
                 f"{latest['total']:,.0f}억",
@@ -44,13 +50,11 @@ else:
                 f"{latest['kosdaq']:,.0f}억",
                 f"{latest['kosdaq']-prev['kosdaq']:+,.0f}억")
 
-    # ── 추이 차트 (억원) ──
     st.subheader("융자잔고 추이 (억원)")
     chart_df = df_credit.set_index("base_date")[["total","kospi","kosdaq"]]
     chart_df.columns = ["전체","코스피","코스닥"]
     st.line_chart(chart_df)
 
-    # ── 최근 20일 표 (증감액/증감률 포함) ──
     st.subheader("최근 20일 기록")
     tbl = df_credit.copy()
     for col in ["total","kospi","kosdaq"]:
@@ -84,10 +88,17 @@ if df_fund.empty:
 else:
     df_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
     df_fund = df_fund.sort_values("base_date")
+    df_fund["inv_deposit"] = df_fund["inv_deposit"].apply(to_uk)
+    df_fund["cma_bal"]     = df_fund["cma_bal"].apply(to_uk)
     latest_fund = df_fund.iloc[-1]
+    prev_fund   = df_fund.iloc[-2] if len(df_fund) > 1 else latest_fund
     c1, c2 = st.columns(2)
-    c1.metric("투자자예탁금", f"{latest_fund['inv_deposit']:,.0f}억")
-    c2.metric("CMA 잔고",    f"{latest_fund['cma_bal']:,.0f}억")
+    c1.metric("투자자예탁금",
+              f"{latest_fund['inv_deposit']:,.0f}억",
+              f"{latest_fund['inv_deposit']-prev_fund['inv_deposit']:+,.0f}억")
+    c2.metric("CMA 잔고",
+              f"{latest_fund['cma_bal']:,.0f}억",
+              f"{latest_fund['cma_bal']-prev_fund['cma_bal']:+,.0f}억")
     fund_chart = df_fund.set_index("base_date")[["inv_deposit","cma_bal"]]
     fund_chart.columns = ["투자자예탁금","CMA잔고"]
     st.line_chart(fund_chart)
