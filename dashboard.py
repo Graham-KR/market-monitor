@@ -29,32 +29,33 @@ else:
     df_credit["base_date"] = pd.to_datetime(df_credit["base_date"])
     df_credit = df_credit.sort_values("base_date")
 
-    kospi  = df_credit[df_credit["market"] == "KOSPI"].set_index("base_date")["total"]
-    kosdaq = df_credit[df_credit["market"] == "KOSDAQ"].set_index("base_date")["total"]
-    total  = df_credit.groupby("base_date")["total"].sum()
+    latest = df_credit.iloc[-1]
+    prev   = df_credit.iloc[-2] if len(df_credit) > 1 else latest
 
     col1, col2, col3 = st.columns(3)
-    if not total.empty:
-        latest = total.iloc[-1]
-        prev   = total.iloc[-2] if len(total) > 1 else latest
-        col1.metric("전체 융자잔고", f"{latest/1e4:.2f}조", f"{(latest-prev)/1e4:+.3f}조")
-    if not kospi.empty:
-        lk = kospi.iloc[-1]; pk = kospi.iloc[-2] if len(kospi) > 1 else lk
-        col2.metric("코스피", f"{lk/1e4:.2f}조", f"{(lk-pk)/1e4:+.3f}조")
-    if not kosdaq.empty:
-        lq = kosdaq.iloc[-1]; pq = kosdaq.iloc[-2] if len(kosdaq) > 1 else lq
-        col3.metric("코스닥", f"{lq/1e4:.2f}조", f"{(lq-pq)/1e4:+.3f}조")
+    col1.metric("전체 융자잔고",
+                f"{latest['total']/1e4:.2f}조",
+                f"{(latest['total']-prev['total'])/1e4:+.3f}조")
+    col2.metric("코스피",
+                f"{latest['kospi']/1e4:.2f}조",
+                f"{(latest['kospi']-prev['kospi'])/1e4:+.3f}조")
+    col3.metric("코스닥",
+                f"{latest['kosdaq']/1e4:.2f}조",
+                f"{(latest['kosdaq']-prev['kosdaq'])/1e4:+.3f}조")
 
     st.subheader("융자잔고 추이")
-    chart_df = pd.DataFrame({"코스피": kospi, "코스닥": kosdaq, "전체": total}) / 1e4
+    chart_df = df_credit.set_index("base_date")[["total","kospi","kosdaq"]] / 1e4
+    chart_df.columns = ["전체","코스피","코스닥"]
     st.line_chart(chart_df)
 
     st.subheader("최근 20일 기록")
     show = df_credit.sort_values("base_date", ascending=False).head(20)[
-        ["base_date", "market", "total"]
+        ["base_date","total","kospi","kosdaq"]
     ].copy()
-    show["total"] = (show["total"] / 1e4).round(3)
-    show.columns = ["날짜", "시장", "잔고(조원)"]
+    show["total"]  = (show["total"]  / 1e4).round(3)
+    show["kospi"]  = (show["kospi"]  / 1e4).round(3)
+    show["kosdaq"] = (show["kosdaq"] / 1e4).round(3)
+    show.columns   = ["날짜","전체(조)","코스피(조)","코스닥(조)"]
     st.dataframe(show, use_container_width=True)
 
 st.divider()
@@ -71,4 +72,4 @@ else:
     c2.metric("CMA 잔고",    f"{latest_fund['cma_bal']/1e4:.1f}조")
     st.line_chart(df_fund.set_index("base_date")[["inv_deposit","cma_bal"]] / 1e4)
 
-st.caption(f"데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
+st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
