@@ -85,8 +85,8 @@ else:
     def make_html_table(df):
         th = "".join([
             f'<th style="padding:7px 10px;text-align:{"left" if c=="날짜" else "right"};'
-            f'background:#f0f0f0;font-size:12px;font-weight:600;color:#444;'
-            f'border-bottom:2px solid #ccc;white-space:nowrap;">{c}</th>'
+            f'background:#f5f5f5;font-size:12px;font-weight:600;color:#444;'
+            f'border-bottom:2px solid #ddd;white-space:nowrap;">{c}</th>'
             for c in cols
         ])
         rows_html = ""
@@ -95,14 +95,14 @@ else:
             for c in cols:
                 val = row[c]
                 align = "left" if c == "날짜" else "right"
-                base_style = f"padding:6px 10px;text-align:{align};border-bottom:1px solid #e0e0e0;font-size:13px;"
+                base_style = f"padding:6px 10px;text-align:{align};border-bottom:1px solid #eee;font-size:13px;"
                 if c in chg_cols:
                     try:
                         v = float(str(val).replace(",","").replace("%","").replace("+",""))
                         if v > 0:
-                            style = base_style + "background:#F5B7B1;color:#922B21;font-weight:600;"
+                            style = base_style + "background:#FCEBEB;color:#A32D2D;font-weight:500;"
                         elif v < 0:
-                            style = base_style + "background:#AED6F1;color:#1A5276;font-weight:600;"
+                            style = base_style + "background:#E6F1FB;color:#0C447C;font-weight:500;"
                         else:
                             style = base_style
                     except:
