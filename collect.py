@@ -42,17 +42,16 @@ def collect_credit():
         print("신용공여 데이터 없음")
         return
     df = pd.DataFrame(rows)
-    print("신용공여 컬럼:", df.columns.tolist())
-    print(df.head(2).to_string())
     for _, row in df.iterrows():
         record = {
             "base_date":  str(row.get("basDt", "")),
-            "total":      float(row.get("crfndRemn", 0) or 0),
-            "market":     str(row.get("stckMrktTp", "ALL")),
+            "total":      float(row.get("crdTrFingWhl", 0) or 0),
+            "kospi":      float(row.get("crdTrFingScrs", 0) or 0),
+            "kosdaq":     float(row.get("crdTrFingKosdaq", 0) or 0),
             "created_at": datetime.now().isoformat(),
         }
         supabase.table("credit_loan").upsert(
-            record, on_conflict="base_date,market"
+            record, on_conflict="base_date"
         ).execute()
     print(f"신용공여 {len(df)}건 저장 완료")
 
@@ -66,7 +65,6 @@ def collect_mkt_fund():
         return
     df = pd.DataFrame(rows)
     print("증시자금 컬럼:", df.columns.tolist())
-    print(df.head(2).to_string())
     for _, row in df.iterrows():
         record = {
             "base_date":   str(row.get("basDt", "")),
@@ -80,7 +78,7 @@ def collect_mkt_fund():
     print(f"증시자금 {len(df)}건 저장 완료")
 
 if __name__ == "__main__":
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작 ({START_DATE} ~ {END_DATE})")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작")
     collect_credit()
     collect_mkt_fund()
     print("완료")
