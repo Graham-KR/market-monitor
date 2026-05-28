@@ -93,7 +93,7 @@ else:
     styled = show[["날짜","전체(억)","전체 증감","전체 증감률",
                    "코스피(억)","코스피 증감","코스피 증감률",
                    "코스닥(억)","코스닥 증감","코스닥 증감률"]]\
-        .style.applymap(color_change, subset=chg_cols)
+        .style.map(color_change, subset=chg_cols)
 
     st.dataframe(styled, use_container_width=True)
 
