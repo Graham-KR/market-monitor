@@ -2,7 +2,7 @@ import os
 import requests
 import pandas as pd
 from supabase import create_client
-from datetime import datetime, timedelta
+from datetime import datetime
 
 API_KEY      = os.environ["DATA_GO_KR_KEY"]
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -10,10 +10,7 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-BASE_URL = "https://apis.data.go.kr/1160100/service/GetFinancialMarketInfoService"
-
-# ── 수집 기간 설정 ──
-# 과거 데이터 전체 수집: 2026-01-02 부터 오늘까지
+BASE_URL   = "https://apis.data.go.kr/1160100/service/GetFinancialMarketInfoService"
 START_DATE = "20260102"
 END_DATE   = datetime.today().strftime("%Y%m%d")
 
@@ -37,7 +34,7 @@ def fetch(endpoint, extra_params):
     return items if isinstance(items, list) else [items]
 
 def collect_credit():
-    rows = fetch(f"{BASE_URL}/getCrdtBal", {
+    rows = fetch(f"{BASE_URL}/getGrantingOfCreditBalanceInfo", {
         "beginBasDt": START_DATE,
         "endBasDt":   END_DATE,
     })
@@ -46,6 +43,7 @@ def collect_credit():
         return
     df = pd.DataFrame(rows)
     print("신용공여 컬럼:", df.columns.tolist())
+    print(df.head(2).to_string())
     for _, row in df.iterrows():
         record = {
             "base_date":  str(row.get("basDt", "")),
@@ -59,7 +57,7 @@ def collect_credit():
     print(f"신용공여 {len(df)}건 저장 완료")
 
 def collect_mkt_fund():
-    rows = fetch(f"{BASE_URL}/getMktFund", {
+    rows = fetch(f"{BASE_URL}/getSecuritiesMarketTotalCapitalInfo", {
         "beginBasDt": START_DATE,
         "endBasDt":   END_DATE,
     })
@@ -68,6 +66,7 @@ def collect_mkt_fund():
         return
     df = pd.DataFrame(rows)
     print("증시자금 컬럼:", df.columns.tolist())
+    print(df.head(2).to_string())
     for _, row in df.iterrows():
         record = {
             "base_date":   str(row.get("basDt", "")),
