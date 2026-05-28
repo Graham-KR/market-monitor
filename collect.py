@@ -68,8 +68,8 @@ def collect_mkt_fund():
     for _, row in df.iterrows():
         record = {
             "base_date":   str(row.get("basDt", "")),
-            "inv_deposit": float(row.get("invstDpst", 0) or 0),
-            "cma_bal":     float(row.get("cmaBlnc", 0) or 0),
+"inv_deposit": float(row.get("invrDpsgAmt", 0) or 0),
+"cma_bal":     float(row.get("brkTrdUcolMny", 0) or 0),
             "created_at":  datetime.now().isoformat(),
         }
         supabase.table("mkt_fund").upsert(
