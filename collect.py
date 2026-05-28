@@ -12,6 +12,11 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 BASE_URL = "https://apis.data.go.kr/1160100/service/GetFinancialMarketInfoService"
 
+# ── 수집 기간 설정 ──
+# 과거 데이터 전체 수집: 2026-01-02 부터 오늘까지
+START_DATE = "20260102"
+END_DATE   = datetime.today().strftime("%Y%m%d")
+
 def fetch(endpoint, extra_params):
     params = {
         "serviceKey": API_KEY,
@@ -32,11 +37,9 @@ def fetch(endpoint, extra_params):
     return items if isinstance(items, list) else [items]
 
 def collect_credit():
-    end   = datetime.today()
-    start = end - timedelta(days=7)
-    rows  = fetch(f"{BASE_URL}/getCrdtBal", {
-        "beginBasDt": start.strftime("%Y%m%d"),
-        "endBasDt":   end.strftime("%Y%m%d"),
+    rows = fetch(f"{BASE_URL}/getCrdtBal", {
+        "beginBasDt": START_DATE,
+        "endBasDt":   END_DATE,
     })
     if not rows:
         print("신용공여 데이터 없음")
@@ -56,11 +59,9 @@ def collect_credit():
     print(f"신용공여 {len(df)}건 저장 완료")
 
 def collect_mkt_fund():
-    end   = datetime.today()
-    start = end - timedelta(days=7)
-    rows  = fetch(f"{BASE_URL}/getMktFund", {
-        "beginBasDt": start.strftime("%Y%m%d"),
-        "endBasDt":   end.strftime("%Y%m%d"),
+    rows = fetch(f"{BASE_URL}/getMktFund", {
+        "beginBasDt": START_DATE,
+        "endBasDt":   END_DATE,
     })
     if not rows:
         print("증시자금 데이터 없음")
@@ -80,7 +81,7 @@ def collect_mkt_fund():
     print(f"증시자금 {len(df)}건 저장 완료")
 
 if __name__ == "__main__":
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작 ({START_DATE} ~ {END_DATE})")
     collect_credit()
     collect_mkt_fund()
     print("완료")
