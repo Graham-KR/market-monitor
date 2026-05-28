@@ -11,7 +11,7 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 BASE_URL   = "https://apis.data.go.kr/1160100/service/GetKofiaStatisticsInfoService"
-START_DATE = "20260102"
+START_DATE = "20100104"
 END_DATE   = datetime.today().strftime("%Y%m%d")
 
 def fetch(endpoint, extra_params):
