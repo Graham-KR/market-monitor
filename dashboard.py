@@ -8,7 +8,6 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="신용거래융자 모니터", layout="wide")
-st.title("신용거래융자 & 증시자금 모니터")
 
 @st.cache_data(ttl=3600)
 def load_credit():
@@ -27,6 +26,7 @@ def to_uk(x):
     return x / 100000000
 
 if df_credit.empty:
+    st.title("신용거래융자 & 증시자금 모니터")
     st.warning("아직 수집된 데이터가 없습니다. 첫 수집은 평일 오후 6시에 자동 실행됩니다.")
 else:
     df_credit["base_date"] = pd.to_datetime(df_credit["base_date"])
@@ -37,6 +37,19 @@ else:
 
     latest = df_credit.iloc[-1]
     prev   = df_credit.iloc[-2] if len(df_credit) > 1 else latest
+    latest_date = latest["base_date"].strftime("%Y-%m-%d")
+
+    col_title, col_date = st.columns([3, 1])
+    with col_title:
+        st.title("신용거래융자 & 증시자금 모니터")
+    with col_date:
+        st.markdown(
+            f'<div style="display:flex;align-items:center;height:100%;padding-top:16px;'
+            f'justify-content:flex-end;gap:5px;font-size:13px;color:var(--text-color);">'
+            f'<span style="opacity:0.6;">최신 데이터 기준일:</span>'
+            f'<strong>{latest_date}</strong></div>',
+            unsafe_allow_html=True
+        )
 
     col1, col2, col3 = st.columns(3)
     col1.metric("전체 융자잔고",
@@ -132,19 +145,4 @@ if df_fund.empty:
 else:
     df_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
     df_fund = df_fund.sort_values("base_date")
-    df_fund["inv_deposit"] = df_fund["inv_deposit"].apply(to_uk)
-    df_fund["cma_bal"]     = df_fund["cma_bal"].apply(to_uk)
-    latest_fund = df_fund.iloc[-1]
-    prev_fund   = df_fund.iloc[-2] if len(df_fund) > 1 else latest_fund
-    c1, c2 = st.columns(2)
-    c1.metric("투자자예탁금",
-              f"{latest_fund['inv_deposit']:,.0f}억",
-              f"{latest_fund['inv_deposit']-prev_fund['inv_deposit']:+,.0f}억")
-    c2.metric("CMA 잔고",
-              f"{latest_fund['cma_bal']:,.0f}억",
-              f"{latest_fund['cma_bal']-prev_fund['cma_bal']:+,.0f}억")
-    fund_chart = df_fund.set_index("base_date")[["inv_deposit","cma_bal"]]
-    fund_chart.columns = ["투자자예탁금","CMA잔고"]
-    st.line_chart(fund_chart)
-
-st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
+    df_fund["inv_deposit"] = df_fund["inv_deposit"]
