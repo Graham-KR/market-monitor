@@ -12,18 +12,17 @@ st.title("신용거래융자 & 증시자금 모니터")
 
 @st.cache_data(ttl=3600)
 def load_credit():
-    res = supabase.table("credit_loan").select("*").order("base_date", desc=True).limit(120).execute()
+    res = supabase.table("credit_loan").select("*").order("base_date", desc=True).limit(5000).execute()
     return pd.DataFrame(res.data)
 
 @st.cache_data(ttl=3600)
 def load_fund():
-    res = supabase.table("mkt_fund").select("*").order("base_date", desc=True).limit(60).execute()
+    res = supabase.table("mkt_fund").select("*").order("base_date", desc=True).limit(5000).execute()
     return pd.DataFrame(res.data)
 
 df_credit = load_credit()
 df_fund   = load_fund()
 
-# 단위 변환: 원 → 억원
 def to_uk(x):
     return x / 100000000
 
@@ -55,13 +54,16 @@ else:
     chart_df.columns = ["전체","코스피","코스닥"]
     st.line_chart(chart_df)
 
-    st.subheader("최근 20일 기록")
+    max_days = min(len(df_credit), 250)
+    days = st.slider("표시 기간 (영업일)", min_value=5, max_value=max_days, value=20, step=5)
+    st.subheader(f"최근 {days}일 기록")
+
     tbl = df_credit.copy()
     for col in ["total","kospi","kosdaq"]:
         tbl[f"{col}_chg"] = tbl[col].diff()
         tbl[f"{col}_pct"] = (tbl[f"{col}_chg"] / tbl[col].shift(1) * 100).round(2)
 
-    show = tbl.sort_values("base_date", ascending=False).head(20).copy()
+    show = tbl.sort_values("base_date", ascending=False).head(days).copy()
     show["날짜"]          = show["base_date"].dt.strftime("%Y-%m-%d")
     show["전체(억)"]      = show["total"].map("{:,.0f}".format)
     show["전체 증감"]     = show["total_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
@@ -73,12 +75,27 @@ else:
     show["코스닥 증감"]   = show["kosdaq_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
     show["코스닥 증감률"] = show["kosdaq_pct"].map(lambda x: f"{x:+.2f}%" if pd.notna(x) else "-")
 
-    st.dataframe(
-        show[["날짜","전체(억)","전체 증감","전체 증감률",
-              "코스피(억)","코스피 증감","코스피 증감률",
-              "코스닥(억)","코스닥 증감","코스닥 증감률"]],
-        use_container_width=True
-    )
+    def color_change(val):
+        try:
+            v = float(str(val).replace(",","").replace("%","").replace("+",""))
+            if v > 0:
+                return "color: #A32D2D; font-weight: 500; background: #FCEBEB"
+            elif v < 0:
+                return "color: #0C447C; font-weight: 500; background: #E6F1FB"
+        except:
+            pass
+        return ""
+
+    chg_cols = ["전체 증감","전체 증감률",
+                "코스피 증감","코스피 증감률",
+                "코스닥 증감","코스닥 증감률"]
+
+    styled = show[["날짜","전체(억)","전체 증감","전체 증감률",
+                   "코스피(억)","코스피 증감","코스피 증감률",
+                   "코스닥(억)","코스닥 증감","코스닥 증감률"]]\
+        .style.applymap(color_change, subset=chg_cols)
+
+    st.dataframe(styled, use_container_width=True)
 
 st.divider()
 st.subheader("증시자금 현황")
