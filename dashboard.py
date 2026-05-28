@@ -75,27 +75,54 @@ else:
     show["코스닥 증감"]   = show["kosdaq_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
     show["코스닥 증감률"] = show["kosdaq_pct"].map(lambda x: f"{x:+.2f}%" if pd.notna(x) else "-")
 
-    def color_change(val):
-        try:
-            v = float(str(val).replace(",","").replace("%","").replace("+",""))
-            if v > 0:
-                return "color: #A32D2D; font-weight: 500; background: #FCEBEB"
-            elif v < 0:
-                return "color: #0C447C; font-weight: 500; background: #E6F1FB"
-        except:
-            pass
-        return ""
-
     chg_cols = ["전체 증감","전체 증감률",
                 "코스피 증감","코스피 증감률",
                 "코스닥 증감","코스닥 증감률"]
+    cols = ["날짜","전체(억)","전체 증감","전체 증감률",
+            "코스피(억)","코스피 증감","코스피 증감률",
+            "코스닥(억)","코스닥 증감","코스닥 증감률"]
 
-    styled = show[["날짜","전체(억)","전체 증감","전체 증감률",
-                   "코스피(억)","코스피 증감","코스피 증감률",
-                   "코스닥(억)","코스닥 증감","코스닥 증감률"]]\
-        .style.map(color_change, subset=chg_cols)
+    def make_html_table(df):
+        th = "".join([
+            f'<th style="padding:7px 10px;text-align:{"left" if c=="날짜" else "right"};'
+            f'background:#f0f0f0;font-size:12px;font-weight:600;color:#444;'
+            f'border-bottom:2px solid #ccc;white-space:nowrap;">{c}</th>'
+            for c in cols
+        ])
+        rows_html = ""
+        for _, row in df[cols].iterrows():
+            tds = ""
+            for c in cols:
+                val = row[c]
+                align = "left" if c == "날짜" else "right"
+                base_style = f"padding:6px 10px;text-align:{align};border-bottom:1px solid #e0e0e0;font-size:13px;"
+                if c in chg_cols:
+                    try:
+                        v = float(str(val).replace(",","").replace("%","").replace("+",""))
+                        if v > 0:
+                            style = base_style + "background:#F5B7B1;color:#922B21;font-weight:600;"
+                        elif v < 0:
+                            style = base_style + "background:#AED6F1;color:#1A5276;font-weight:600;"
+                        else:
+                            style = base_style
+                    except:
+                        style = base_style
+                elif c == "날짜":
+                    style = base_style + "color:#666;"
+                else:
+                    style = base_style
+                tds += f'<td style="{style}">{val}</td>'
+            rows_html += f"<tr>{tds}</tr>"
 
-    st.dataframe(styled, use_container_width=True)
+        return (
+            f'<div style="overflow-x:auto;border:1px solid #ddd;border-radius:8px;">'
+            f'<table style="width:100%;border-collapse:collapse;">'
+            f'<thead><tr>{th}</tr></thead>'
+            f'<tbody>{rows_html}</tbody>'
+            f'</table></div>'
+        )
+
+    st.markdown(make_html_table(show), unsafe_allow_html=True)
 
 st.divider()
 st.subheader("증시자금 현황")
