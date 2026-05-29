@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from supabase import create_client
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -27,11 +28,10 @@ def to_uk(x):
 
 if df_credit.empty:
     st.title("신용거래융자 & 증시자금 모니터")
-    st.warning("아직 수집된 데이터가 없습니다. 첫 수집은 평일 오후 6시에 자동 실행됩니다.")
+    st.warning("아직 수집된 데이터가 없습니다.")
 else:
     df_credit["base_date"] = pd.to_datetime(df_credit["base_date"])
     df_credit = df_credit.sort_values("base_date").reset_index(drop=True)
-
     for col in ["total", "kospi", "kosdaq"]:
         df_credit[col] = df_credit[col].apply(to_uk)
 
@@ -39,17 +39,15 @@ else:
     prev   = df_credit.iloc[-2] if len(df_credit) > 1 else latest
     latest_date = latest["base_date"].strftime("%Y-%m-%d")
 
-    col_title, col_date = st.columns([3, 1])
-    with col_title:
-        st.title("신용거래융자 & 증시자금 모니터")
-    with col_date:
-        st.markdown(
-            f'<div style="display:flex;align-items:center;height:100%;padding-top:16px;'
-            f'justify-content:flex-end;gap:5px;font-size:13px;color:var(--text-color);">'
-            f'<span style="opacity:0.6;">최신 데이터 기준일:</span>'
-            f'<strong>{latest_date}</strong></div>',
-            unsafe_allow_html=True
-        )
+    # ── 헤더: 타이틀 + 기준일 하단 정렬 ──
+    st.markdown(
+        f'<div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:1rem;">'
+        f'<h1 style="font-size:2rem;font-weight:600;margin:0;">신용거래융자 &amp; 증시자금 모니터</h1>'
+        f'<span style="font-size:15px;color:gray;padding-bottom:4px;white-space:nowrap;">'
+        f'최신 데이터 기준일: <strong style="color:#222;">{latest_date}</strong></span>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
     col1, col2, col3 = st.columns(3)
     col1.metric("전체 융자잔고",
@@ -62,10 +60,26 @@ else:
                 f"{latest['kosdaq']:,.0f}억",
                 f"{latest['kosdaq']-prev['kosdaq']:+,.0f}억")
 
-    st.subheader("융자잔고 추이 (억원)")
-    chart_df = df_credit.set_index("base_date")[["total","kospi","kosdaq"]]
-    chart_df.columns = ["전체","코스피","코스닥"]
-    st.line_chart(chart_df)
+    # ── Plotly 차트: 범례 제목 옆 ──
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_credit["base_date"], y=df_credit["total"],
+                             name="전체", line=dict(color="#378ADD", width=1.5)))
+    fig.add_trace(go.Scatter(x=df_credit["base_date"], y=df_credit["kospi"],
+                             name="코스피", line=dict(color="#D85A30", width=1.5)))
+    fig.add_trace(go.Scatter(x=df_credit["base_date"], y=df_credit["kosdaq"],
+                             name="코스닥", line=dict(color="#85B7EB", width=1.5)))
+    fig.update_layout(
+        title=dict(text="융자잔고 추이 (억원)", font=dict(size=16), x=0),
+        legend=dict(orientation="h", x=0.25, y=1.12, xanchor="left"),
+        margin=dict(l=0, r=0, t=60, b=0),
+        height=340,
+        xaxis=dict(showgrid=False),
+        yaxis=dict(tickformat=",", gridcolor="#f0f0f0"),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        hovermode="x unified"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
     max_days = min(len(df_credit), 250)
     days = st.slider("표시 기간 (영업일)", min_value=5, max_value=max_days, value=20, step=5)
@@ -88,9 +102,7 @@ else:
     show["코스닥 증감"]   = show["kosdaq_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
     show["코스닥 증감률"] = show["kosdaq_pct"].map(lambda x: f"{x:+.2f}%" if pd.notna(x) else "-")
 
-    chg_cols = ["전체 증감","전체 증감률",
-                "코스피 증감","코스피 증감률",
-                "코스닥 증감","코스닥 증감률"]
+    chg_cols = ["전체 증감","전체 증감률","코스피 증감","코스피 증감률","코스닥 증감","코스닥 증감률"]
     cols = ["날짜","전체(억)","전체 증감","전체 증감률",
             "코스피(억)","코스피 증감","코스피 증감률",
             "코스닥(억)","코스닥 증감","코스닥 증감률"]
@@ -126,7 +138,6 @@ else:
                     style = base_style
                 tds += f'<td style="{style}">{val}</td>'
             rows_html += f"<tr>{tds}</tr>"
-
         return (
             f'<div style="overflow-x:auto;border:1px solid #ddd;border-radius:8px;">'
             f'<table style="width:100%;border-collapse:collapse;">'
@@ -134,7 +145,6 @@ else:
             f'<tbody>{rows_html}</tbody>'
             f'</table></div>'
         )
-
     st.markdown(make_html_table(show), unsafe_allow_html=True)
 
 st.divider()
@@ -145,4 +155,33 @@ if df_fund.empty:
 else:
     df_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
     df_fund = df_fund.sort_values("base_date")
-    df_fund["inv_deposit"] = df_fund["inv_deposit"]
+    df_fund["inv_deposit"] = df_fund["inv_deposit"].apply(to_uk)
+    df_fund["cma_bal"]     = df_fund["cma_bal"].apply(to_uk)
+    latest_fund = df_fund.iloc[-1]
+    prev_fund   = df_fund.iloc[-2] if len(df_fund) > 1 else latest_fund
+    c1, c2 = st.columns(2)
+    c1.metric("투자자예탁금",
+              f"{latest_fund['inv_deposit']:,.0f}억",
+              f"{latest_fund['inv_deposit']-prev_fund['inv_deposit']:+,.0f}억")
+    c2.metric("CMA 잔고",
+              f"{latest_fund['cma_bal']:,.0f}억",
+              f"{latest_fund['cma_bal']-prev_fund['cma_bal']:+,.0f}억")
+
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=df_fund["base_date"], y=df_fund["inv_deposit"],
+                              name="투자자예탁금", line=dict(color="#378ADD", width=1.5)))
+    fig2.add_trace(go.Scatter(x=df_fund["base_date"], y=df_fund["cma_bal"],
+                              name="CMA잔고", line=dict(color="#1D9E75", width=1.5)))
+    fig2.update_layout(
+        legend=dict(orientation="h", x=0, y=1.12),
+        margin=dict(l=0, r=0, t=40, b=0),
+        height=280,
+        xaxis=dict(showgrid=False),
+        yaxis=dict(tickformat=",", gridcolor="#f0f0f0"),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        hovermode="x unified"
+    )
+    st.plotly_chart(fig2, use_container_width=True)
+
+st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
