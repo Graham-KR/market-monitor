@@ -191,4 +191,65 @@ fig2.update_layout(
 fig2.update_yaxes(tickformat=",", gridcolor="#f0f0f0", secondary_y=False)
 fig2.update_yaxes(tickformat=",", showgrid=False, secondary_y=True)
 st.plotly_chart(fig2, use_container_width=True)
+# 증시자금 최근 20일 테이블
+st.subheader(f"최근 {days}일 증시자금 기록")
+
+tbl_fund = df_fund.copy()
+tbl_fund["inv_chg"]     = tbl_fund["inv_deposit"].diff()
+tbl_fund["inv_pct"]     = (tbl_fund["inv_chg"] / tbl_fund["inv_deposit"].shift(1) * 100).round(2)
+tbl_fund["cma_chg"]     = tbl_fund["cma_bal"].diff()
+tbl_fund["cma_pct"]     = (tbl_fund["cma_chg"] / tbl_fund["cma_bal"].shift(1) * 100).round(2)
+
+show_fund = tbl_fund.sort_values("base_date", ascending=False).head(days).copy()
+show_fund["날짜"]            = show_fund["base_date"].dt.strftime("%Y-%m-%d")
+show_fund["예탁금(억)"]      = show_fund["inv_deposit"].map("{:,.0f}".format)
+show_fund["예탁금 증감"]     = show_fund["inv_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
+show_fund["예탁금 증감률"]   = show_fund["inv_pct"].map(lambda x: f"{x:+.2f}%" if pd.notna(x) else "-")
+show_fund["CMA잔고(억)"]     = show_fund["cma_bal"].map("{:,.0f}".format)
+show_fund["CMA 증감"]        = show_fund["cma_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
+show_fund["CMA 증감률"]      = show_fund["cma_pct"].map(lambda x: f"{x:+.2f}%" if pd.notna(x) else "-")
+
+fund_chg_cols = ["예탁금 증감", "예탁금 증감률", "CMA 증감", "CMA 증감률"]
+fund_cols = ["날짜", "예탁금(억)", "예탁금 증감", "예탁금 증감률",
+             "CMA잔고(억)", "CMA 증감", "CMA 증감률"]
+
+def make_fund_table(df):
+    th = "".join([
+        f'<th style="padding:7px 10px;text-align:{"left" if c=="날짜" else "right"};'
+        f'background:#f5f5f5;font-size:12px;font-weight:600;color:#444;'
+        f'border-bottom:2px solid #ddd;white-space:nowrap;">{c}</th>'
+        for c in fund_cols
+    ])
+    rows_html = ""
+    for _, row in df[fund_cols].iterrows():
+        tds = ""
+        for c in fund_cols:
+            val = row[c]
+            align = "left" if c == "날짜" else "right"
+            base_style = f"padding:6px 10px;text-align:{align};border-bottom:1px solid #eee;font-size:13px;"
+            if c in fund_chg_cols:
+                try:
+                    v = float(str(val).replace(",","").replace("%","").replace("+",""))
+                    if v > 0:
+                        style = base_style + "background:#FCEBEB;color:#A32D2D;font-weight:500;"
+                    elif v < 0:
+                        style = base_style + "background:#E6F1FB;color:#0C447C;font-weight:500;"
+                    else:
+                        style = base_style
+                except:
+                    style = base_style
+            elif c == "날짜":
+                style = base_style + "color:#666;"
+            else:
+                style = base_style
+            tds += f'<td style="{style}">{val}</td>'
+        rows_html += f"<tr>{tds}</tr>"
+    return (
+        f'<div style="overflow-x:auto;border:1px solid #ddd;border-radius:8px;">'
+        f'<table style="width:100%;border-collapse:collapse;">'
+        f'<thead><tr>{th}</tr></thead>'
+        f'<tbody>{rows_html}</tbody>'
+        f'</table></div>'
+    )
+st.markdown(make_fund_table(show_fund), unsafe_allow_html=True)
 st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
