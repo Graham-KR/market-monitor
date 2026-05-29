@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from supabase import create_client
+from plotly.subplots import make_subplots
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -167,21 +168,28 @@ else:
               f"{latest_fund['cma_bal']:,.0f}억",
               f"{latest_fund['cma_bal']-prev_fund['cma_bal']:+,.0f}억")
 
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=df_fund["base_date"], y=df_fund["inv_deposit"],
-                              name="투자자예탁금", line=dict(color="#378ADD", width=1.5)))
-    fig2.add_trace(go.Scatter(x=df_fund["base_date"], y=df_fund["cma_bal"],
-                              name="CMA잔고", line=dict(color="#1D9E75", width=1.5)))
-    fig2.update_layout(
-        legend=dict(orientation="h", x=0, y=1.12),
-        margin=dict(l=0, r=0, t=40, b=0),
-        height=280,
-        xaxis=dict(showgrid=False),
-        yaxis=dict(tickformat=",", gridcolor="#f0f0f0"),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        hovermode="x unified"
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    fig2 = make_subplots(specs=[[{"secondary_y": True}]])
+
+fig2.add_trace(
+    go.Scatter(x=df_fund["base_date"], y=df_fund["inv_deposit"],
+               name="투자자예탁금", line=dict(color="#378ADD", width=1.5)),
+    secondary_y=False
+)
+fig2.add_trace(
+    go.Scatter(x=df_fund["base_date"], y=df_fund["cma_bal"],
+               name="CMA잔고", line=dict(color="#1D9E75", width=1.5)),
+    secondary_y=True
+)
+fig2.update_layout(
+    legend=dict(orientation="h", x=0, y=1.12),
+    margin=dict(l=0, r=0, t=40, b=0),
+    height=280,
+    xaxis=dict(showgrid=False),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+    hovermode="x unified"
+)
+fig2.update_yaxes(tickformat=",", gridcolor="#f0f0f0", secondary_y=False)
+fig2.update_yaxes(tickformat=",", showgrid=False, secondary_y=True)
 
 st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
