@@ -169,7 +169,6 @@ else:
               f"{latest_fund['cma_bal']-prev_fund['cma_bal']:+,.0f}억")
 
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-
 fig2.add_trace(
     go.Scatter(x=df_fund["base_date"], y=df_fund["inv_deposit"],
                name="투자자예탁금", line=dict(color="#378ADD", width=1.5)),
@@ -191,5 +190,5 @@ fig2.update_layout(
 )
 fig2.update_yaxes(tickformat=",", gridcolor="#f0f0f0", secondary_y=False)
 fig2.update_yaxes(tickformat=",", showgrid=False, secondary_y=True)
-
+st.plotly_chart(fig2, use_container_width=True)
 st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
