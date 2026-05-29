@@ -2,7 +2,7 @@ name: 신용거래융자 데이터 수집
 
 on:
   schedule:
-    - cron: '0 9 * * 1-5'
+    - cron: '0 9 * * 1-6'
   workflow_dispatch:
 
 jobs:
