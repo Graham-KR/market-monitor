@@ -2,3 +2,4 @@ requests
 pandas
 supabase
 streamlit
+plotly
