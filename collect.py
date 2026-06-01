@@ -97,13 +97,13 @@ def collect_adr():
         r = requests.get(url, headers=headers)
         soup = BeautifulSoup(r.text, "html.parser")
         data = {}
-        for tag in soup.find_all("td"):
+        tds = soup.find_all("td")
+        for i, tag in enumerate(tds):
             text = tag.get_text(strip=True)
             for key in ["상한종목수", "상승종목수", "보합종목수", "하락종목수", "하한종목수"]:
-                if text.startswith(key):
-                    num_str = text.replace(key, "").strip()
+                if text == key and i + 1 < len(tds):
                     try:
-                        data[key] = int(num_str)
+                        data[key] = int(tds[i+1].get_text(strip=True).replace(",", ""))
                     except:
                         pass
         up   = data.get("상승종목수", 0)
@@ -119,7 +119,7 @@ def collect_adr():
 
     supabase.table("adr").upsert(result, on_conflict="base_date").execute()
     print(f"ADR 저장 완료 ({result['base_date']})")
-
+    
 if __name__ == "__main__":
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작")
     collect_credit()
