@@ -204,7 +204,7 @@ with tab2:
     if df_adr.empty:
         st.info("ADR 데이터 수집 대기 중입니다.")
     else:
-        df_adr["base_date"] = pd.to_datetime(df_adr["base_date"])
+        df_adr["base_date"] = pd.to_datetime(df_adr["base_date"]).dt.date
         df_adr = df_adr.sort_values("base_date").reset_index(drop=True)
 
         latest_adr = df_adr.iloc[-1]
