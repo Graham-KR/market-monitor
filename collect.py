@@ -1,9 +1,12 @@
 import os
+import re
+import xml.etree.ElementTree as ET
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from supabase import create_client
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from urllib.parse import unquote
 
 API_KEY      = os.environ["DATA_GO_KR_KEY"]
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -57,9 +60,7 @@ def collect_credit():
             "kosdaq":     float(row.get("crdTrFingKosdaq", 0) or 0),
             "created_at": datetime.now().isoformat(),
         }
-        supabase.table("credit_loan").upsert(
-            record, on_conflict="base_date"
-        ).execute()
+        supabase.table("credit_loan").upsert(record, on_conflict="base_date").execute()
     print(f"신용공여 {len(df)}건 저장 완료 (최신: {df['basDt'].max()})")
 
 def collect_mkt_fund():
@@ -80,13 +81,10 @@ def collect_mkt_fund():
             "cma_bal":     float(row.get("brkTrdUcolMny", 0) or 0),
             "created_at":  datetime.now().isoformat(),
         }
-        supabase.table("mkt_fund").upsert(
-            record, on_conflict="base_date"
-        ).execute()
+        supabase.table("mkt_fund").upsert(record, on_conflict="base_date").execute()
     print(f"증시자금 {len(df)}건 저장 완료 (최신: {df['basDt'].max()})")
 
 def collect_adr():
-    import re
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://finance.naver.com"
@@ -123,10 +121,68 @@ def collect_adr():
 
     supabase.table("adr").upsert(result, on_conflict="base_date").execute()
     print(f"ADR 저장 완료 ({result['base_date']})")
-    
+
+def collect_featured_news():
+    RSS_URL = "https://news.google.com/rss/search?q=특징주&hl=ko&gl=KR&ceid=KR:ko"
+    KST = timezone(timedelta(hours=9))
+
+    STOCK_PATTERN = re.compile(
+        r"['\"]?([가-힣A-Za-z&]+(?:\s[가-힣A-Za-z]+)?)['\"]?\s*"
+        r"(?:주가|급등|급락|상한가|하한가|강세|약세|매수|매도|상승|하락|신고가|신저가|이슈|테마|관련주|수혜|주목|선정)"
+    )
+    NOISE_WORDS = {
+        "오늘","내일","시장","증시","코스피","코스닥","전망","분석","투자","주식",
+        "이슈","테마","관련","수혜","특징","종목","뉴스","기업","업종","섹터",
+        "글로벌","미국","중국","일본","외국인","기관","개인","거래량","시가총액",
+    }
+
+    try:
+        resp = requests.get(RSS_URL, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        resp.raise_for_status()
+        root = ET.fromstring(resp.content)
+    except Exception as e:
+        print(f"특징주 RSS 수집 실패: {e}")
+        return
+
+    saved = 0
+    for item in root.findall(".//item")[:100]:
+        title        = item.findtext("title", "").strip()
+        link         = item.findtext("link", "").strip()
+        pub_date_raw = item.findtext("pubDate", "").strip()
+        source       = item.findtext("source", "").strip()
+
+        try:
+            pub_dt = datetime.strptime(pub_date_raw, "%a, %d %b %Y %H:%M:%S %Z")
+            pub_dt = pub_dt.replace(tzinfo=timezone.utc).astimezone(KST)
+            pub_str = pub_dt.isoformat()
+        except Exception:
+            pub_str = datetime.now(KST).isoformat()
+
+        m = re.search(r"url=([^&]+)", link)
+        if m:
+            link = unquote(m.group(1))
+
+        found = STOCK_PATTERN.findall(title)
+        stocks = list(dict.fromkeys(
+            n.strip() for n in found
+            if len(n.strip()) >= 2 and n.strip() not in NOISE_WORDS
+        ))
+
+        try:
+            supabase.table("featured_news").upsert(
+                {"pub_dt": pub_str, "title": title, "link": link, "source": source, "stocks": stocks},
+                on_conflict="link"
+            ).execute()
+            saved += 1
+        except Exception as e:
+            print(f"저장 실패: {e}")
+
+    print(f"특징주 뉴스 {saved}건 저장 완료")
+
 if __name__ == "__main__":
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작")
     collect_credit()
     collect_mkt_fund()
     collect_adr()
+    collect_featured_news()
     print("완료")
