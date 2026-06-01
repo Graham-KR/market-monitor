@@ -204,51 +204,45 @@ with tab2:
     if df_adr.empty:
         st.info("ADR 데이터 수집 대기 중입니다.")
     else:
-        df_adr["base_date"] = pd.to_datetime(df_adr["base_date"]).dt.date
+        df_adr["base_date"] = pd.to_datetime(df_adr["base_date"])
         df_adr = df_adr.sort_values("base_date").reset_index(drop=True)
-
         latest_adr = df_adr.iloc[-1]
         adr_date   = latest_adr["base_date"].strftime("%Y-%m-%d")
 
         st.markdown(f'<p style="text-align:right;color:gray;font-size:14px;">기준일: <strong>{adr_date}</strong></p>', unsafe_allow_html=True)
 
+        # 수치 카드
         c1, c2 = st.columns(2)
-        c1.metric("KOSPI ADR", f"{latest_adr['kospi_adr']:.2f}", f"상승 {int(latest_adr['kospi_up'])} / 하락 {int(latest_adr['kospi_down'])}")
-        c2.metric("KOSDAQ ADR", f"{latest_adr['kosdaq_adr']:.2f}", f"상승 {int(latest_adr['kosdaq_up'])} / 하락 {int(latest_adr['kosdaq_down'])}")
+        c1.metric("KOSPI ADR", f"{latest_adr['kospi_adr']:.2f}",
+                  f"상승 {int(latest_adr['kospi_up'])} / 하락 {int(latest_adr['kospi_down'])}")
+        c2.metric("KOSDAQ ADR", f"{latest_adr['kosdaq_adr']:.2f}",
+                  f"상승 {int(latest_adr['kosdaq_up'])} / 하락 {int(latest_adr['kosdaq_down'])}")
 
-        # ADR 추이 차트
-        fig_adr = go.Figure()
-        fig_adr.add_trace(go.Scatter(x=df_adr["base_date"], y=df_adr["kospi_adr"], name="KOSPI ADR", line=dict(color="#D85A30", width=1.5)))
-        fig_adr.add_trace(go.Scatter(x=df_adr["base_date"], y=df_adr["kosdaq_adr"], name="KOSDAQ ADR", line=dict(color="#378ADD", width=1.5)))
-        fig_adr.add_hline(y=100, line_dash="dash", line_color="gray", annotation_text="기준선(100)")
-        fig_adr.update_layout(
-            title=dict(text="ADR 추이", font=dict(size=16), x=0),
-            legend=dict(orientation="h", x=0, y=1.12),
-            margin=dict(l=0, r=0, t=60, b=0), height=320,
-            xaxis=dict(showgrid=False, type="date"),
-            yaxis=dict(gridcolor="#f0f0f0"),
-            plot_bgcolor="white", paper_bgcolor="white", hovermode="x unified"
-        )
-        st.plotly_chart(fig_adr, use_container_width=True)
+        st.divider()
 
-        # 상승/하락 종목수 차트
-        st.subheader("상승/하락 종목수 추이")
-        col_sel = st.selectbox("시장 선택", ["KOSPI", "KOSDAQ"])
-        prefix = "kospi" if col_sel == "KOSPI" else "kosdaq"
+        # KOSPI 상승/하락/보합 파이차트
+        col1, col2 = st.columns(2)
 
-        fig_cnt = go.Figure()
-        fig_cnt.add_trace(go.Bar(x=df_adr["base_date"], y=df_adr[f"{prefix}_up"], name="상승", marker_color="#A32D2D"))
-        fig_cnt.add_trace(go.Bar(x=df_adr["base_date"], y=-df_adr[f"{prefix}_down"], name="하락", marker_color="#0C447C"))
-        fig_cnt.update_layout(
-            barmode="relative",
-            legend=dict(orientation="h", x=0, y=1.12),
-            margin=dict(l=0, r=0, t=40, b=0), height=280,
-            xaxis=dict(showgrid=False, type="date"),
-            yaxis=dict(gridcolor="#f0f0f0"),
-            plot_bgcolor="white", paper_bgcolor="white", hovermode="x unified"
-        )
-        st.plotly_chart(fig_cnt, use_container_width=True)
-
+        with col1:
+            st.markdown("#### KOSPI 종목 현황")
+            kospi_values = [
+                int(latest_adr['kospi_upper_limit']),
+                int(latest_adr['kospi_up']),
+                int(latest_adr['kospi_flat']),
+                int(latest_adr['kospi_down']),
+                int(latest_adr['kospi_lower_limit']),
+            ]
+            kospi_labels = ["상한", "상승", "보합", "하락", "하한"]
+            kospi_colors = ["#FF0000", "#A32D2D", "#888888", "#0C447C", "#0000FF"]
+            fig_k = go.Figure(go.Bar(
+                x=kospi_labels,
+                y=kospi_values,
+                marker_color=kospi_colors,
+                text=kospi_values,
+                textposition="outside"
+            ))
+            fig_k.update_layout(
+                margin=dict
 # ────────────────────────────────────────────
 # TAB 3: 특징주
 # ────────────────────────────────────────────
