@@ -241,8 +241,58 @@ with tab2:
                 text=kospi_values,
                 textposition="outside"
             ))
-            fig_k.update_layout(
-                margin=dict
+           fig_k.update_layout(
+                margin=dict(l=0, r=0, t=20, b=0), height=300,
+                plot_bgcolor="white", paper_bgcolor="white",
+                yaxis=dict(showgrid=False, showticklabels=False),
+                xaxis=dict(showgrid=False)
+            )
+            st.plotly_chart(fig_k, use_container_width=True)
+
+        with col2:
+            st.markdown("#### KOSDAQ 종목 현황")
+            kosdaq_values = [
+                int(latest_adr['kosdaq_upper_limit']),
+                int(latest_adr['kosdaq_up']),
+                int(latest_adr['kosdaq_flat']),
+                int(latest_adr['kosdaq_down']),
+                int(latest_adr['kosdaq_lower_limit']),
+            ]
+            kosdaq_labels = ["상한", "상승", "보합", "하락", "하한"]
+            kosdaq_colors = ["#FF0000", "#A32D2D", "#888888", "#0C447C", "#0000FF"]
+            fig_d = go.Figure(go.Bar(
+                x=kosdaq_labels,
+                y=kosdaq_values,
+                marker_color=kosdaq_colors,
+                text=kosdaq_values,
+                textposition="outside"
+            ))
+            fig_d.update_layout(
+                margin=dict(l=0, r=0, t=20, b=0), height=300,
+                plot_bgcolor="white", paper_bgcolor="white",
+                yaxis=dict(showgrid=False, showticklabels=False),
+                xaxis=dict(showgrid=False)
+            )
+            st.plotly_chart(fig_d, use_container_width=True)
+
+        st.divider()
+
+        kospi_adr  = float(latest_adr['kospi_adr'])
+        kosdaq_adr = float(latest_adr['kosdaq_adr'])
+
+        def adr_comment(adr):
+            if adr >= 150:   return "🔥 과열 구간"
+            elif adr >= 100: return "✅ 강세 구간"
+            elif adr >= 70:  return "🟡 중립 구간"
+            elif adr >= 40:  return "🔵 약세 구간"
+            else:             return "❄️ 침체 구간"
+
+        c1, c2 = st.columns(2)
+        c1.info(f"KOSPI: {adr_comment(kospi_adr)} ({kospi_adr:.2f})")
+        c2.info(f"KOSDAQ: {adr_comment(kosdaq_adr)} ({kosdaq_adr:.2f})")
+
+        st.caption("데이터 출처: 네이버금융 | 매일 18:00 자동 수집")
+        
 # ────────────────────────────────────────────
 # TAB 3: 특징주
 # ────────────────────────────────────────────
