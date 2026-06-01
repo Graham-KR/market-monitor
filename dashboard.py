@@ -283,6 +283,33 @@ with tab2:
         c1.info(f"KOSPI: {adr_comment(kospi_adr)} ({kospi_adr:.2f})")
         c2.info(f"KOSDAQ: {adr_comment(kosdaq_adr)} ({kosdaq_adr:.2f})")
 
+        # 이동평균 ADR (데이터 10일 이상일 때만 표시)
+        if len(df_adr) >= 10:
+            st.divider()
+            st.markdown("#### 이동평균 ADR 추이 (10일)")
+            df_adr["kospi_adr_ma10"]  = df_adr["kospi_adr"].rolling(10).mean()
+            df_adr["kosdaq_adr_ma10"] = df_adr["kosdaq_adr"].rolling(10).mean()
+
+            fig_ma = go.Figure()
+            fig_ma.add_trace(go.Scatter(
+                x=df_adr["base_date"], y=df_adr["kospi_adr_ma10"],
+                name="KOSPI ADR(10일)", line=dict(color="#D85A30", width=2)
+            ))
+            fig_ma.add_trace(go.Scatter(
+                x=df_adr["base_date"], y=df_adr["kosdaq_adr_ma10"],
+                name="KOSDAQ ADR(10일)", line=dict(color="#378ADD", width=2)
+            ))
+            fig_ma.add_hline(y=100, line_dash="dash", line_color="gray", annotation_text="기준선(100)")
+            fig_ma.update_layout(
+                legend=dict(orientation="h", x=0, y=1.12),
+                margin=dict(l=0, r=0, t=40, b=0), height=300,
+                xaxis=dict(showgrid=False, type="date"),
+                yaxis=dict(gridcolor="#f0f0f0"),
+                plot_bgcolor="white", paper_bgcolor="white",
+                hovermode="x unified"
+            )
+            st.plotly_chart(fig_ma, use_container_width=True)
+
         st.caption("데이터 출처: 네이버금융 | 매일 18:00 자동 수집")
 
 # ── TAB 3 ──────────────────────────────────
