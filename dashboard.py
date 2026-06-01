@@ -34,11 +34,48 @@ df_credit = load_credit()
 df_fund   = load_fund()
 df_adr    = load_adr()
 
+def make_html_table(df, cols, chg_cols):
+    th = "".join([
+        f'<th style="padding:7px 10px;text-align:{"left" if c=="날짜" else "right"};'
+        f'background:#f5f5f5;font-size:12px;font-weight:600;color:#444;'
+        f'border-bottom:2px solid #ddd;white-space:nowrap;">{c}</th>'
+        for c in cols
+    ])
+    rows_html = ""
+    for _, row in df[cols].iterrows():
+        tds = ""
+        for c in cols:
+            val = row[c]
+            align = "left" if c == "날짜" else "right"
+            base_style = f"padding:6px 10px;text-align:{align};border-bottom:1px solid #eee;font-size:13px;"
+            if c in chg_cols:
+                try:
+                    v = float(str(val).replace(",","").replace("%","").replace("+",""))
+                    if v > 0:
+                        style = base_style + "background:#FCEBEB;color:#A32D2D;font-weight:500;"
+                    elif v < 0:
+                        style = base_style + "background:#E6F1FB;color:#0C447C;font-weight:500;"
+                    else:
+                        style = base_style
+                except:
+                    style = base_style
+            elif c == "날짜":
+                style = base_style + "color:#666;"
+            else:
+                style = base_style
+            tds += f'<td style="{style}">{val}</td>'
+        rows_html += f"<tr>{tds}</tr>"
+    return (
+        f'<div style="overflow-x:auto;border:1px solid #ddd;border-radius:8px;">'
+        f'<table style="width:100%;border-collapse:collapse;">'
+        f'<thead><tr>{th}</tr></thead>'
+        f'<tbody>{rows_html}</tbody>'
+        f'</table></div>'
+    )
+
 tab1, tab2, tab3 = st.tabs(["📈 신용거래융자 & 증시자금", "📊 ADR", "📰 특징주"])
 
-# ────────────────────────────────────────────
-# TAB 1: 신용거래융자 & 증시자금
-# ────────────────────────────────────────────
+# ── TAB 1 ──────────────────────────────────
 with tab1:
     if df_credit.empty:
         st.warning("아직 수집된 데이터가 없습니다.")
@@ -103,45 +140,6 @@ with tab1:
 
         chg_cols = ["전체 증감","전체 증감률","코스피 증감","코스피 증감률","코스닥 증감","코스닥 증감률"]
         cols = ["날짜","전체(억)","전체 증감","전체 증감률","코스피(억)","코스피 증감","코스피 증감률","코스닥(억)","코스닥 증감","코스닥 증감률"]
-
-        def make_html_table(df, cols, chg_cols):
-            th = "".join([
-                f'<th style="padding:7px 10px;text-align:{"left" if c=="날짜" else "right"};'
-                f'background:#f5f5f5;font-size:12px;font-weight:600;color:#444;'
-                f'border-bottom:2px solid #ddd;white-space:nowrap;">{c}</th>'
-                for c in cols
-            ])
-            rows_html = ""
-            for _, row in df[cols].iterrows():
-                tds = ""
-                for c in cols:
-                    val = row[c]
-                    align = "left" if c == "날짜" else "right"
-                    base_style = f"padding:6px 10px;text-align:{align};border-bottom:1px solid #eee;font-size:13px;"
-                    if c in chg_cols:
-                        try:
-                            v = float(str(val).replace(",","").replace("%","").replace("+",""))
-                            if v > 0:
-                                style = base_style + "background:#FCEBEB;color:#A32D2D;font-weight:500;"
-                            elif v < 0:
-                                style = base_style + "background:#E6F1FB;color:#0C447C;font-weight:500;"
-                            else:
-                                style = base_style
-                        except:
-                            style = base_style
-                    elif c == "날짜":
-                        style = base_style + "color:#666;"
-                    else:
-                        style = base_style
-                    tds += f'<td style="{style}">{val}</td>'
-                rows_html += f"<tr>{tds}</tr>"
-            return (
-                f'<div style="overflow-x:auto;border:1px solid #ddd;border-radius:8px;">'
-                f'<table style="width:100%;border-collapse:collapse;">'
-                f'<thead><tr>{th}</tr></thead>'
-                f'<tbody>{rows_html}</tbody>'
-                f'</table></div>'
-            )
         st.markdown(make_html_table(show, cols, chg_cols), unsafe_allow_html=True)
 
     st.divider()
@@ -179,7 +177,7 @@ with tab1:
         tbl_fund["cma_chg"] = tbl_fund["cma_bal"].diff()
         tbl_fund["cma_pct"] = (tbl_fund["cma_chg"] / tbl_fund["cma_bal"].shift(1) * 100).round(2)
 
-        show_fund = tbl_fund.sort_values("base_date", ascending=False).head(days).copy()
+        show_fund = tbl_fund.sort_values("base_date", ascending=False).head(20).copy()
         show_fund["날짜"]          = show_fund["base_date"].dt.strftime("%Y-%m-%d")
         show_fund["예탁금(억)"]    = show_fund["inv_deposit"].map("{:,.0f}".format)
         show_fund["예탁금 증감"]   = show_fund["inv_chg"].map(lambda x: f"{x:+,.0f}" if pd.notna(x) else "-")
@@ -194,9 +192,7 @@ with tab1:
 
     st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
 
-# ────────────────────────────────────────────
-# TAB 2: ADR
-# ────────────────────────────────────────────
+# ── TAB 2 ──────────────────────────────────
 with tab2:
     st.subheader("ADR (등락비율)")
     st.caption("ADR = 상승종목수 / 하락종목수 × 100 | 100 이상: 강세, 100 미만: 약세")
@@ -211,16 +207,12 @@ with tab2:
 
         st.markdown(f'<p style="text-align:right;color:gray;font-size:14px;">기준일: <strong>{adr_date}</strong></p>', unsafe_allow_html=True)
 
-        # 수치 카드
         c1, c2 = st.columns(2)
-        c1.metric("KOSPI ADR", f"{latest_adr['kospi_adr']:.2f}",
-                  f"상승 {int(latest_adr['kospi_up'])} / 하락 {int(latest_adr['kospi_down'])}")
-        c2.metric("KOSDAQ ADR", f"{latest_adr['kosdaq_adr']:.2f}",
-                  f"상승 {int(latest_adr['kosdaq_up'])} / 하락 {int(latest_adr['kosdaq_down'])}")
+        c1.metric("KOSPI ADR", f"{latest_adr['kospi_adr']:.2f}", f"상승 {int(latest_adr['kospi_up'])} / 하락 {int(latest_adr['kospi_down'])}")
+        c2.metric("KOSDAQ ADR", f"{latest_adr['kosdaq_adr']:.2f}", f"상승 {int(latest_adr['kosdaq_up'])} / 하락 {int(latest_adr['kosdaq_down'])}")
 
         st.divider()
 
-        # KOSPI 상승/하락/보합 파이차트
         col1, col2 = st.columns(2)
 
         with col1:
@@ -241,7 +233,7 @@ with tab2:
                 text=kospi_values,
                 textposition="outside"
             ))
-           fig_k.update_layout(
+            fig_k.update_layout(
                 margin=dict(l=0, r=0, t=20, b=0), height=300,
                 plot_bgcolor="white", paper_bgcolor="white",
                 yaxis=dict(showgrid=False, showticklabels=False),
@@ -285,17 +277,15 @@ with tab2:
             elif adr >= 100: return "✅ 강세 구간"
             elif adr >= 70:  return "🟡 중립 구간"
             elif adr >= 40:  return "🔵 약세 구간"
-            else:             return "❄️ 침체 구간"
+            else:            return "❄️ 침체 구간"
 
         c1, c2 = st.columns(2)
         c1.info(f"KOSPI: {adr_comment(kospi_adr)} ({kospi_adr:.2f})")
         c2.info(f"KOSDAQ: {adr_comment(kosdaq_adr)} ({kosdaq_adr:.2f})")
 
         st.caption("데이터 출처: 네이버금융 | 매일 18:00 자동 수집")
-        
-# ────────────────────────────────────────────
-# TAB 3: 특징주
-# ────────────────────────────────────────────
+
+# ── TAB 3 ──────────────────────────────────
 with tab3:
     st.subheader("특징주 뉴스")
     st.info("준비 중입니다.")
