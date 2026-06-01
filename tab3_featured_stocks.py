@@ -60,6 +60,7 @@ def fetch_rss_news() -> list[dict]:
         items.append({
             "title": title,
             "link": original_link,
+            "pub_dt": pub_dt,
             "pub_str": pub_str,
             "source": source,
             "stocks": stocks,
@@ -138,7 +139,7 @@ def render_tab3():
     # ── 필터 적용 ──
     active_filter = (selected_tag or search_query).strip()
 
-    filtered = sorted(news_list, key=lambda x: x["pub_str"], reverse=True)
+    filtered = sorted(news_list, key=lambda x: x["pub_dt"], reverse=True)
     if active_filter:
         keyword = active_filter.lower()
         filtered = [
