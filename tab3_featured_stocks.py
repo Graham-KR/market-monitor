@@ -120,7 +120,7 @@ def render_tab3():
             st.rerun()
 
     # ── 종목 태그 ──
-    stock_tags   = get_all_stock_tags(news_list)
+    stock_tags   = get_all_stock_tags(filtered if active_filter else news_list)
     selected_tag = st.session_state.get("selected_tag", "")
 
     if stock_tags:
