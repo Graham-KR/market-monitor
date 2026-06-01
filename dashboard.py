@@ -74,7 +74,7 @@ def make_html_table(df, cols, chg_cols):
         f'</table></div>'
     )
 
-tab1, tab2, tab3 = st.tabs(["신용거래융자 & 증시자금", "ADR", "특징주"])
+tab1, tab2, tab3 = st.tabs(["📊 신용거래융자 & 증시자금", "📈 ADR", "📰 특징주"])
 
 # ── TAB 1 ──────────────────────────────────
 with tab1:
