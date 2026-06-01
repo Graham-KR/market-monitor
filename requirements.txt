@@ -4,3 +4,4 @@ supabase
 streamlit
 plotly
 beautifulsoup4
+lxml
