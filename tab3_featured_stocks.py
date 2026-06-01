@@ -19,15 +19,12 @@ NOISE_WORDS = {
 
 @st.cache_data(ttl=300)
 def fetch_news_from_db(date_str: str) -> list[dict]:
-    """Supabase에서 특정 날짜 뉴스 조회"""
     from supabase import create_client
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_KEY"]
     supabase = create_client(url, key)
-
     start = f"{date_str}T00:00:00+09:00"
     end   = f"{date_str}T23:59:59+09:00"
-
     res = (
         supabase.table("featured_news")
         .select("pub_dt, title, link, source, stocks")
@@ -40,13 +37,12 @@ def fetch_news_from_db(date_str: str) -> list[dict]:
     return res.data or []
 
 
+@st.cache_data(ttl=3600)
 def get_available_dates() -> list[str]:
-    """DB에 데이터가 있는 날짜 목록 조회"""
     from supabase import create_client
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_KEY"]
     supabase = create_client(url, key)
-
     res = (
         supabase.table("featured_news")
         .select("pub_dt")
@@ -105,8 +101,8 @@ def render_tab3():
     last_updated = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S KST")
     st.caption(f"총 {len(news_list)}건 · {selected_date} · 마지막 업데이트: {last_updated}")
 
-    # ── 검색창 + 새로고침 ──
-    col_search, col_refresh = st.columns([5, 1])
+    # ── 검색창 + 검색 버튼 ──
+    col_search, col_btn = st.columns([5, 1])
     with col_search:
         search_query = st.text_input(
             "종목명 검색",
@@ -114,28 +110,16 @@ def render_tab3():
             label_visibility="collapsed",
             on_change=lambda: None,
         )
-    with col_refresh:
+    with col_btn:
         if st.button("🔍 검색", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
-    # ── 종목 태그 ──
-    stock_tags   = get_all_stock_tags(filtered if active_filter else news_list)
-    selected_tag = st.session_state.get("selected_tag", "")
-
-    if stock_tags:
-        st.markdown("**📌 급등 종목 태그**")
-        tag_cols = st.columns(len(stock_tags))
-        for i, tag in enumerate(stock_tags):
-            with tag_cols[i]:
-                if st.button(tag, key=f"tag_{tag}", use_container_width=True):
-                    st.session_state.selected_tag = tag
-                    selected_tag = tag
+    # ── active_filter 계산 ──
+    selected_tag  = st.session_state.get("selected_tag", "")
+    active_filter = (selected_tag or search_query).strip()
 
     # ── 필터 적용 ──
-    active_filter = (selected_tag or search_query).strip()
-    filtered = news_list
-
     if active_filter:
         keyword  = active_filter.lower()
         filtered = [
@@ -150,6 +134,21 @@ def render_tab3():
             if st.button("✕ 초기화", use_container_width=True):
                 st.session_state.selected_tag = ""
                 st.rerun()
+    else:
+        filtered = news_list
+
+    # ── 종목 태그 (필터 적용된 결과 기준) ──
+    tag_source = filtered if active_filter else news_list
+    stock_tags = get_all_stock_tags(tag_source)
+
+    if stock_tags:
+        st.markdown("**📌 급등 종목 태그**")
+        tag_cols = st.columns(len(stock_tags))
+        for i, tag in enumerate(stock_tags):
+            with tag_cols[i]:
+                if st.button(tag, key=f"tag_{tag}", use_container_width=True):
+                    st.session_state.selected_tag = tag
+                    st.rerun()
 
     if not filtered:
         st.warning("검색 결과가 없습니다.")
