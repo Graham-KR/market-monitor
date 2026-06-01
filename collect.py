@@ -86,6 +86,7 @@ def collect_mkt_fund():
     print(f"증시자금 {len(df)}건 저장 완료 (최신: {df['basDt'].max()})")
 
 def collect_adr():
+    import re
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://finance.naver.com"
@@ -96,24 +97,27 @@ def collect_adr():
         url = f"https://finance.naver.com/sise/sise_index.naver?code={code}"
         r = requests.get(url, headers=headers)
         soup = BeautifulSoup(r.text, "html.parser")
-        data = {}
-        tds = soup.find_all("td")
-        for i, tag in enumerate(tds):
-            text = tag.get_text(strip=True)
-            for key in ["상한종목수", "상승종목수", "보합종목수", "하락종목수", "하한종목수"]:
-                if text == key and i + 1 < len(tds):
-                    try:
-                        data[key] = int(tds[i+1].get_text(strip=True).replace(",", ""))
-                    except:
-                        pass
-        up   = data.get("상승종목수", 0)
-        down = data.get("하락종목수", 0)
+
+        text = ""
+        for tag in soup.find_all("td"):
+            t = tag.get_text(strip=True)
+            if "상승종목수" in t and "하락종목수" in t:
+                text = t
+                break
+
+        def extract(key, t):
+            m = re.search(key + r"(\d+)", t)
+            return int(m.group(1)) if m else 0
+
+        up   = extract("상승종목수", text)
+        down = extract("하락종목수", text)
         adr  = round(up / down * 100, 2) if down > 0 else 0
+
         result[f"{market}_up"]          = up
-        result[f"{market}_flat"]        = data.get("보합종목수", 0)
+        result[f"{market}_flat"]        = extract("보합종목수", text)
         result[f"{market}_down"]        = down
-        result[f"{market}_upper_limit"] = data.get("상한종목수", 0)
-        result[f"{market}_lower_limit"] = data.get("하한종목수", 0)
+        result[f"{market}_upper_limit"] = extract("상한종목수", text)
+        result[f"{market}_lower_limit"] = extract("하한종목수", text)
         result[f"{market}_adr"]         = adr
         print(f"{code} ADR: {adr} (상승:{up} 하락:{down})")
 
