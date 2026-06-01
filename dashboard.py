@@ -225,7 +225,7 @@ with tab2:
             title=dict(text="ADR 추이", font=dict(size=16), x=0),
             legend=dict(orientation="h", x=0, y=1.12),
             margin=dict(l=0, r=0, t=60, b=0), height=320,
-            xaxis=dict(showgrid=False),
+            xaxis=dict(showgrid=False, type="date"),
             yaxis=dict(gridcolor="#f0f0f0"),
             plot_bgcolor="white", paper_bgcolor="white", hovermode="x unified"
         )
@@ -243,7 +243,7 @@ with tab2:
             barmode="relative",
             legend=dict(orientation="h", x=0, y=1.12),
             margin=dict(l=0, r=0, t=40, b=0), height=280,
-            xaxis=dict(showgrid=False),
+            xaxis=dict(showgrid=False, type="date"),
             yaxis=dict(gridcolor="#f0f0f0"),
             plot_bgcolor="white", paper_bgcolor="white", hovermode="x unified"
         )
