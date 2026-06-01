@@ -100,10 +100,10 @@ def collect_adr():
         for tag in soup.find_all("td"):
             text = tag.get_text(strip=True)
             for key in ["상한종목수", "상승종목수", "보합종목수", "하락종목수", "하한종목수"]:
-                if key in text:
+                if text.startswith(key):
+                    num_str = text.replace(key, "").strip()
                     try:
-                        val = int(''.join(filter(str.isdigit, text)))
-                        data[key] = val
+                        data[key] = int(num_str)
                     except:
                         pass
         up   = data.get("상승종목수", 0)
