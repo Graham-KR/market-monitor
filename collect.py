@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 from supabase import create_client
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 API_KEY      = os.environ["DATA_GO_KR_KEY"]
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -84,8 +85,44 @@ def collect_mkt_fund():
         ).execute()
     print(f"증시자금 {len(df)}건 저장 완료 (최신: {df['basDt'].max()})")
 
+def collect_adr():
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://finance.naver.com"
+    }
+    result = {"base_date": datetime.today().strftime("%Y-%m-%d")}
+
+    for market, code in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
+        url = f"https://finance.naver.com/sise/sise_index.naver?code={code}"
+        r = requests.get(url, headers=headers)
+        soup = BeautifulSoup(r.text, "html.parser")
+        data = {}
+        for tag in soup.find_all("td"):
+            text = tag.get_text(strip=True)
+            for key in ["상한종목수", "상승종목수", "보합종목수", "하락종목수", "하한종목수"]:
+                if key in text:
+                    try:
+                        val = int(''.join(filter(str.isdigit, text)))
+                        data[key] = val
+                    except:
+                        pass
+        up   = data.get("상승종목수", 0)
+        down = data.get("하락종목수", 0)
+        adr  = round(up / down * 100, 2) if down > 0 else 0
+        result[f"{market}_up"]          = up
+        result[f"{market}_flat"]        = data.get("보합종목수", 0)
+        result[f"{market}_down"]        = down
+        result[f"{market}_upper_limit"] = data.get("상한종목수", 0)
+        result[f"{market}_lower_limit"] = data.get("하한종목수", 0)
+        result[f"{market}_adr"]         = adr
+        print(f"{code} ADR: {adr} (상승:{up} 하락:{down})")
+
+    supabase.table("adr").upsert(result, on_conflict="base_date").execute()
+    print(f"ADR 저장 완료 ({result['base_date']})")
+
 if __name__ == "__main__":
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작")
     collect_credit()
     collect_mkt_fund()
+    collect_adr()
     print("완료")
