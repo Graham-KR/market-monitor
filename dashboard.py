@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from supabase import create_client
+from tab3_featured_stocks import render_tab3
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -73,7 +74,7 @@ def make_html_table(df, cols, chg_cols):
         f'</table></div>'
     )
 
-tab1, tab2, tab3 = st.tabs(["📈 신용거래융자 & 증시자금", "📊 ADR", "📰 특징주"])
+tab1, tab2, tab3 = st.tabs(["신용거래융자 & 증시자금", "ADR", "특징주"])
 
 # ── TAB 1 ──────────────────────────────────
 with tab1:
@@ -314,5 +315,4 @@ with tab2:
 
 # ── TAB 3 ──────────────────────────────────
 with tab3:
-    st.subheader("특징주 뉴스")
-    st.info("준비 중입니다.")
+    render_tab3()
