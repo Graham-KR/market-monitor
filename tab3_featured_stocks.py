@@ -109,9 +109,10 @@ def render_tab3():
             "종목명 검색",
             placeholder="예: 삼성전자, 카카오, 현대차",
             label_visibility="collapsed",
+            on_change=lambda: None,
         )
     with col_refresh:
-        if st.button("🔄 새로고침", use_container_width=True):
+        if st.button("🔍 검색", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 
