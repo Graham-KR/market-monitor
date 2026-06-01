@@ -84,12 +84,15 @@ def render_tab3():
         st.warning("수집된 뉴스가 없습니다. 오늘 18:00 이후 자동 수집됩니다.")
         return
 
-    selected_date = st.selectbox(
+    min_date = datetime.strptime(available_dates[-1], "%Y-%m-%d").date()
+    max_date = datetime.strptime(available_dates[0], "%Y-%m-%d").date()
+    selected_date = st.date_input(
         "날짜 선택",
-        options=available_dates,
-        index=0,
+        value=max_date,
+        min_value=min_date,
+        max_value=max_date,
         label_visibility="collapsed",
-    )
+    ).strftime("%Y-%m-%d")
 
     # ── 뉴스 로드 ──
     with st.spinner("뉴스 불러오는 중..."):
