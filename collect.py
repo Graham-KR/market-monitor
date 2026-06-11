@@ -45,8 +45,10 @@ def kofia_fetch(obj_nm, start_dt, end_dt):
     r = requests.post(KOFIA_URL, json=payload, headers=KOFIA_HEADERS, timeout=30)
     r.raise_for_status()
     data = r.json()
-    print(f"API 응답 키: {list(data.keys())}")
-    return data.get("ds1", [])
+    rows = data.get("ds1", [])
+    if rows:
+        print(f"첫 번째 행 전체: {rows[0]}")
+    return rows
 
 def collect_credit():
     """신용거래융자 — 금투협 직접 크롤링 (T+1)"""
