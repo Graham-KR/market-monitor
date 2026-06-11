@@ -94,7 +94,7 @@ with tab1:
 
         # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
         def convert_credit(row):
-            if row["base_date"] >= KOFIA_START:
+            if row["base_date"] >= KOFIA_START and str(row["base_date"]).count("-") == 2:
                 return to_uk_mn(row["total"]), to_uk_mn(row["kospi"]), to_uk_mn(row["kosdaq"])
             else:
                 return to_uk(row["total"]), to_uk(row["kospi"]), to_uk(row["kosdaq"])
@@ -171,7 +171,7 @@ with tab1:
 
         # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
         def convert_fund(row):
-            if row["base_date"] >= KOFIA_START:
+            if row["base_date"] >= KOFIA_START and str(row["base_date"]).count("-") == 2:
                 return to_uk_mn(row["inv_deposit"]), to_uk_mn(row["cma_bal"])
             else:
                 return to_uk(row["inv_deposit"]), to_uk(row["cma_bal"])
