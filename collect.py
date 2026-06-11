@@ -66,12 +66,12 @@ def collect_credit():
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
         # TMPY2=전체, TMPY3=코스피, TMPY4=코스닥 (단위: 백만원)
         # DB 저장단위: 백만원 그대로 (dashboard에서 /100 해서 억원으로 표시)
+        vals = list(row.values())
         record = {
-            "base_date": base_date,
-            "total":     float(row.get("TMPY2", 0) or 0),
-            "kospi":     float(row.get("TMPY3", 0) or 0),
-            "kosdaq":    float(row.get("TMPY4", 0) or 0),
-            "created_at": datetime.now(KST).isoformat(),
+            "base_date":   base_date,
+            "inv_deposit": float(vals[1] if len(vals) > 1 else 0),
+            "cma_bal":     float(vals[4] if len(vals) > 4 else 0),
+            "created_at":  datetime.now(KST).isoformat(),
         }
         supabase.table("credit_loan").upsert(record, on_conflict="base_date").execute()
         saved += 1
