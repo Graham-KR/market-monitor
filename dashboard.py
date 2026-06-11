@@ -13,6 +13,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="시장 모니터", layout="wide")
 
+# 금투협 API 전환 기준일 (이 날짜부터 백만원 단위)
+KOFIA_START = pd.Timestamp("2026-06-11")
+
 @st.cache_data(ttl=3600)
 def load_credit():
     res = supabase.table("credit_loan").select("*").order("base_date", desc=True).limit(5000).execute()
@@ -29,7 +32,12 @@ def load_adr():
     return pd.DataFrame(res.data)
 
 def to_uk(x):
+    """원 단위 → 억원"""
     return x / 100000000
+
+def to_uk_mn(x):
+    """백만원 단위 → 억원"""
+    return x / 100
 
 df_credit = load_credit()
 df_fund   = load_fund()
@@ -83,8 +91,17 @@ with tab1:
     else:
         df_credit["base_date"] = pd.to_datetime(df_credit["base_date"])
         df_credit = df_credit.sort_values("base_date").reset_index(drop=True)
-        for col in ["total", "kospi", "kosdaq"]:
-            df_credit[col] = df_credit[col].apply(to_uk)
+
+        # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
+        def convert_credit(row):
+            if row["base_date"] >= KOFIA_START:
+                return to_uk_mn(row["total"]), to_uk_mn(row["kospi"]), to_uk_mn(row["kosdaq"])
+            else:
+                return to_uk(row["total"]), to_uk(row["kospi"]), to_uk(row["kosdaq"])
+
+        converted = df_credit.apply(convert_credit, axis=1, result_type="expand")
+        converted.columns = ["total", "kospi", "kosdaq"]
+        df_credit[["total", "kospi", "kosdaq"]] = converted
 
         latest = df_credit.iloc[-1]
         prev   = df_credit.iloc[-2] if len(df_credit) > 1 else latest
@@ -150,9 +167,19 @@ with tab1:
         st.info("증시자금 데이터 수집 대기 중입니다.")
     else:
         df_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
-        df_fund = df_fund.sort_values("base_date")
-        df_fund["inv_deposit"] = df_fund["inv_deposit"].apply(to_uk)
-        df_fund["cma_bal"]     = df_fund["cma_bal"].apply(to_uk)
+        df_fund = df_fund.sort_values("base_date").reset_index(drop=True)
+
+        # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
+        def convert_fund(row):
+            if row["base_date"] >= KOFIA_START:
+                return to_uk_mn(row["inv_deposit"]), to_uk_mn(row["cma_bal"])
+            else:
+                return to_uk(row["inv_deposit"]), to_uk(row["cma_bal"])
+
+        converted_fund = df_fund.apply(convert_fund, axis=1, result_type="expand")
+        converted_fund.columns = ["inv_deposit", "cma_bal"]
+        df_fund[["inv_deposit", "cma_bal"]] = converted_fund
+
         latest_fund = df_fund.iloc[-1]
         prev_fund   = df_fund.iloc[-2] if len(df_fund) > 1 else latest_fund
         c1, c2 = st.columns(2)
@@ -191,7 +218,7 @@ with tab1:
         fund_cols = ["날짜","예탁금(억)","예탁금 증감","예탁금 증감률","CMA잔고(억)","CMA 증감","CMA 증감률"]
         st.markdown(make_html_table(show_fund, fund_cols, fund_chg_cols), unsafe_allow_html=True)
 
-    st.caption("데이터 출처: 공공데이터포털 금융투자협회종합통계정보 | 매일 18:00 자동 수집")
+    st.caption("데이터 출처: 금융투자협회 | 매일 18:00 자동 수집")
 
 # ── TAB 2 ──────────────────────────────────
 with tab2:
@@ -209,8 +236,13 @@ with tab2:
         st.markdown(f'<p style="text-align:right;color:gray;font-size:14px;">기준일: <strong>{adr_date}</strong></p>', unsafe_allow_html=True)
 
         c1, c2 = st.columns(2)
-        c1.metric("KOSPI ADR", f"{latest_adr['kospi_adr']:.2f}", f"상승 {int(latest_adr['kospi_up'])} / 하락 {int(latest_adr['kospi_down'])}")
-        c2.metric("KOSDAQ ADR", f"{latest_adr['kosdaq_adr']:.2f}", f"상승 {int(latest_adr['kosdaq_up'])} / 하락 {int(latest_adr['kosdaq_down'])}")
+        # 화살표 제거: delta 없이 표시
+        c1.metric("KOSPI ADR", f"{latest_adr['kospi_adr']:.2f}",
+                  f"상승 {int(latest_adr['kospi_up'])} / 하락 {int(latest_adr['kospi_down'])}",
+                  delta_color="off")
+        c2.metric("KOSDAQ ADR", f"{latest_adr['kosdaq_adr']:.2f}",
+                  f"상승 {int(latest_adr['kosdaq_up'])} / 하락 {int(latest_adr['kosdaq_down'])}",
+                  delta_color="off")
 
         st.divider()
 
@@ -228,11 +260,9 @@ with tab2:
             kospi_labels = ["상한", "상승", "보합", "하락", "하한"]
             kospi_colors = ["#FF0000", "#A32D2D", "#888888", "#0C447C", "#0000FF"]
             fig_k = go.Figure(go.Bar(
-                x=kospi_labels,
-                y=kospi_values,
+                x=kospi_labels, y=kospi_values,
                 marker_color=kospi_colors,
-                text=kospi_values,
-                textposition="outside"
+                text=kospi_values, textposition="outside"
             ))
             fig_k.update_layout(
                 margin=dict(l=0, r=0, t=20, b=0), height=300,
@@ -254,11 +284,9 @@ with tab2:
             kosdaq_labels = ["상한", "상승", "보합", "하락", "하한"]
             kosdaq_colors = ["#FF0000", "#A32D2D", "#888888", "#0C447C", "#0000FF"]
             fig_d = go.Figure(go.Bar(
-                x=kosdaq_labels,
-                y=kosdaq_values,
+                x=kosdaq_labels, y=kosdaq_values,
                 marker_color=kosdaq_colors,
-                text=kosdaq_values,
-                textposition="outside"
+                text=kosdaq_values, textposition="outside"
             ))
             fig_d.update_layout(
                 margin=dict(l=0, r=0, t=20, b=0), height=300,
@@ -284,7 +312,20 @@ with tab2:
         c1.info(f"KOSPI: {adr_comment(kospi_adr)} ({kospi_adr:.2f})")
         c2.info(f"KOSDAQ: {adr_comment(kosdaq_adr)} ({kosdaq_adr:.2f})")
 
-        # 이동평균 ADR (데이터 10일 이상일 때만 표시)
+        # ADR 구간 설명
+        st.divider()
+        st.markdown("#### ADR 구간 해설")
+        st.markdown("""
+| 구간 | ADR 범위 | 의미 |
+|------|----------|------|
+| 🔥 과열 | 150 이상 | 단기 급등 과열 — 조정 가능성 높음 |
+| ✅ 강세 | 100 ~ 150 | 상승 종목이 하락 종목보다 많은 건강한 상승장 |
+| 🟡 중립 | 70 ~ 100 | 상승/하락 균형 — 방향성 탐색 구간 |
+| 🔵 약세 | 40 ~ 70 | 하락 종목 우세 — 하락 추세 진행 중 |
+| ❄️ 침체 | 40 미만 | 극단적 약세 — 단기 반등 가능성 있음 |
+""")
+
+        # 이동평균 ADR
         if len(df_adr) >= 10:
             st.divider()
             st.markdown("#### 이동평균 ADR 추이 (10일)")
