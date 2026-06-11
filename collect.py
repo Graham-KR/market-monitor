@@ -28,7 +28,7 @@ def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
     if res.data:
         return res.data[0]["base_date"].replace("-", "")
-    return "20220101"
+    return "20100104"
 
 def kofia_fetch(obj_nm, start_dt, end_dt):
     """금융투자협회 getMetaDataList API 호출"""
@@ -45,10 +45,7 @@ def kofia_fetch(obj_nm, start_dt, end_dt):
     r = requests.post(KOFIA_URL, json=payload, headers=KOFIA_HEADERS, timeout=30)
     r.raise_for_status()
     data = r.json()
-    rows = data.get("ds1", [])
-    if rows:
-        print(f"첫 번째 행 전체: {rows[0]}")
-    return rows
+    return data.get("ds1", [])
 
 def collect_credit():
     """신용거래융자 — 금투협 직접 크롤링 (T+1)"""
@@ -63,8 +60,7 @@ def collect_credit():
 
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1", "")).strip()
-        print(f"날짜값: '{dt_str}', 길이: {len(dt_str)}")
+        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or "").strip()
         if len(dt_str) != 8:
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
@@ -92,11 +88,11 @@ def collect_mkt_fund():
     if not rows:
         print("증시자금 신규 데이터 없음")
         return
-    print(f"증시자금 API 응답 전체 키 확인 필요")
+    print(f"증시자금 API 응답 첫 번째 행: {rows[0]}")
 
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1", ""))
+        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or "").strip()
         if len(dt_str) != 8:
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
