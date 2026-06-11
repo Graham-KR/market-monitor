@@ -28,8 +28,6 @@ def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
     if res.data:
         return res.data[0]["base_date"].replace("-", "")
-    if table == "mkt_fund":
-        return "20220101"
     return "20100104"
 
 def kofia_fetch(obj_nm, start_dt, end_dt):
@@ -57,9 +55,7 @@ def collect_credit():
 
     rows = kofia_fetch("STATSCU0100000070B0", start, end)
     if not rows:
-        print("증시자금 신규 데이터 없음")
-        return
-    print(f"증시자금 API 응답 첫 번째 행: {rows[0]}")
+        print("신용공여 신규 데이터 없음")
         return
 
     saved = 0
@@ -92,6 +88,7 @@ def collect_mkt_fund():
     if not rows:
         print("증시자금 신규 데이터 없음")
         return
+    print(f"증시자금 API 응답 첫 번째 행: {rows[0]}")
 
     saved = 0
     for row in rows:
