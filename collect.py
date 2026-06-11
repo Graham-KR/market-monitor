@@ -28,6 +28,8 @@ def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
     if res.data:
         return res.data[0]["base_date"].replace("-", "")
+    if table == "mkt_fund":
+        return "20220101"
     return "20100104"
 
 def kofia_fetch(obj_nm, start_dt, end_dt):
