@@ -92,7 +92,7 @@ def collect_mkt_fund():
 
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or "").strip()
+        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or list(row.values())[0] or "").strip()
         if len(dt_str) != 8:
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
