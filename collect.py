@@ -28,7 +28,7 @@ def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
     if res.data:
         return res.data[0]["base_date"].replace("-", "")
-    return "20100104"
+    return "20220101"
 
 def kofia_fetch(obj_nm, start_dt, end_dt):
     """금융투자협회 getMetaDataList API 호출"""
