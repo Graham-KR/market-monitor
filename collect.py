@@ -28,7 +28,7 @@ def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
     if res.data:
         return res.data[0]["base_date"].replace("-", "")
-    return "20100104"
+    return "20220101"
 
 def kofia_fetch(obj_nm, start_dt, end_dt):
     """금융투자협회 getMetaDataList API 호출"""
@@ -60,7 +60,7 @@ def collect_credit():
 
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or "").strip()
+        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or list(row.values())[0] or "").strip()
         if len(dt_str) != 8:
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
