@@ -61,7 +61,8 @@ def collect_credit():
 
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1", ""))
+        dt_str = str(row.get("TMPY1", "")).strip()
+        print(f"날짜값: '{dt_str}', 길이: {len(dt_str)}")
         if len(dt_str) != 8:
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
