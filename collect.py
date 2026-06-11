@@ -1,20 +1,28 @@
 import os
 import re
+import json
 import xml.etree.ElementTree as ET
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from supabase import create_client
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from urllib.parse import unquote
 
-API_KEY      = os.environ["DATA_GO_KR_KEY"]
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-BASE_URL = "https://apis.data.go.kr/1160100/service/GetKofiaStatisticsInfoService"
-END_DATE = datetime.today().strftime("%Y%m%d")
+KST = timezone(timedelta(hours=9))
+
+KOFIA_URL  = "https://freesis.kofia.or.kr/meta/getMetaDataList.do"
+KOFIA_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Referer":    "https://freesis.kofia.or.kr/stat/FreeSIS.do?parentDivId=MSIS10000000000000&serviceId=STATSCU0100000070",
+    "Content-Type": "application/json; charset=UTF-8",
+    "X-Requested-With": "XMLHttpRequest",
+    "Origin": "https://freesis.kofia.or.kr",
+}
 
 def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
@@ -22,74 +30,88 @@ def get_last_date(table):
         return res.data[0]["base_date"].replace("-", "")
     return "20100104"
 
-def fetch(endpoint, extra_params):
-    params = {
-        "serviceKey": API_KEY,
-        "pageNo": 1,
-        "numOfRows": 1,
-        "resultType": "json",
+def kofia_fetch(obj_nm, start_dt, end_dt):
+    """금융투자협회 getMetaDataList API 호출"""
+    payload = {
+        "dmSearch": {
+            "OBJ_NM":  obj_nm,
+            "tmpV1":   "D",
+            "tmpV40":  "1000000",
+            "tmpV41":  "1",
+            "tmpV45":  start_dt,
+            "tmpV46":  end_dt,
+        }
     }
-    params.update(extra_params)
-    r = requests.get(endpoint, params=params, timeout=15)
+    r = requests.post(KOFIA_URL, json=payload, headers=KOFIA_HEADERS, timeout=30)
     r.raise_for_status()
-    total = int(r.json()["response"]["body"]["totalCount"])
-    if total == 0:
-        return []
-    params["numOfRows"] = total
-    r2 = requests.get(endpoint, params=params, timeout=30)
-    r2.raise_for_status()
-    items = r2.json()["response"]["body"]["items"]["item"]
-    return items if isinstance(items, list) else [items]
+    data = r.json()
+    return data.get("ds1", [])
 
 def collect_credit():
+    """신용거래융자 — 금투협 직접 크롤링 (T+1)"""
     start = get_last_date("credit_loan")
-    print(f"신용공여 수집 시작: {start} ~ {END_DATE}")
-    rows = fetch(f"{BASE_URL}/getGrantingOfCreditBalanceInfo", {
-        "beginBasDt": start,
-        "endBasDt":   END_DATE,
-    })
+    end   = datetime.now(KST).strftime("%Y%m%d")
+    print(f"신용공여 수집: {start} ~ {end}")
+
+    rows = kofia_fetch("STATSCU0100000070B0", start, end)
     if not rows:
         print("신용공여 신규 데이터 없음")
         return
-    df = pd.DataFrame(rows)
-    for _, row in df.iterrows():
+
+    saved = 0
+    for row in rows:
+        dt_str = str(row.get("TMPY1", ""))
+        if len(dt_str) != 8:
+            continue
+        base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
+        # TMPY2=전체, TMPY3=코스피, TMPY4=코스닥 (단위: 백만원)
+        # DB 저장단위: 백만원 그대로 (dashboard에서 /100 해서 억원으로 표시)
         record = {
-            "base_date":  str(row.get("basDt", "")),
-            "total":      float(row.get("crdTrFingWhl", 0) or 0),
-            "kospi":      float(row.get("crdTrFingScrs", 0) or 0),
-            "kosdaq":     float(row.get("crdTrFingKosdaq", 0) or 0),
-            "created_at": datetime.now().isoformat(),
+            "base_date": base_date,
+            "total":     float(row.get("TMPY2", 0) or 0),
+            "kospi":     float(row.get("TMPY3", 0) or 0),
+            "kosdaq":    float(row.get("TMPY4", 0) or 0),
+            "created_at": datetime.now(KST).isoformat(),
         }
         supabase.table("credit_loan").upsert(record, on_conflict="base_date").execute()
-    print(f"신용공여 {len(df)}건 저장 완료 (최신: {df['basDt'].max()})")
+        saved += 1
+
+    print(f"신용공여 {saved}건 저장 완료")
 
 def collect_mkt_fund():
+    """증시자금(투자자예탁금) — 금투협 직접 크롤링 (T+1)"""
     start = get_last_date("mkt_fund")
-    print(f"증시자금 수집 시작: {start} ~ {END_DATE}")
-    rows = fetch(f"{BASE_URL}/getSecuritiesMarketTotalCapitalInfo", {
-        "beginBasDt": start,
-        "endBasDt":   END_DATE,
-    })
+    end   = datetime.now(KST).strftime("%Y%m%d")
+    print(f"증시자금 수집: {start} ~ {end}")
+
+    rows = kofia_fetch("STATSCU0100000060B0", start, end)
     if not rows:
         print("증시자금 신규 데이터 없음")
         return
-    df = pd.DataFrame(rows)
-    for _, row in df.iterrows():
+
+    saved = 0
+    for row in rows:
+        dt_str = str(row.get("TMPY1", ""))
+        if len(dt_str) != 8:
+            continue
+        base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
         record = {
-            "base_date":   str(row.get("basDt", "")),
-            "inv_deposit": float(row.get("invrDpsgAmt", 0) or 0),
-            "cma_bal":     float(row.get("brkTrdUcolMny", 0) or 0),
-            "created_at":  datetime.now().isoformat(),
+            "base_date":   base_date,
+            "inv_deposit": float(row.get("TMPY2", 0) or 0),
+            "cma_bal":     float(row.get("TMPY5", 0) or 0),
+            "created_at":  datetime.now(KST).isoformat(),
         }
         supabase.table("mkt_fund").upsert(record, on_conflict="base_date").execute()
-    print(f"증시자금 {len(df)}건 저장 완료 (최신: {df['basDt'].max()})")
+        saved += 1
+
+    print(f"증시자금 {saved}건 저장 완료")
 
 def collect_adr():
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://finance.naver.com"
     }
-    result = {"base_date": datetime.today().strftime("%Y-%m-%d")}
+    result = {"base_date": datetime.now(KST).strftime("%Y-%m-%d")}
 
     for market, code in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
         url = f"https://finance.naver.com/sise/sise_index.naver?code={code}"
@@ -124,7 +146,6 @@ def collect_adr():
 
 def collect_featured_news():
     RSS_URL = "https://news.google.com/rss/search?q=특징주&hl=ko&gl=KR&ceid=KR:ko"
-    KST = timezone(timedelta(hours=9))
 
     STOCK_PATTERN = re.compile(
         r"['\"]?([가-힣A-Za-z&]+(?:\s[가-힣A-Za-z]+)?)['\"]?\s*"
@@ -180,7 +201,7 @@ def collect_featured_news():
     print(f"특징주 뉴스 {saved}건 저장 완료")
 
 if __name__ == "__main__":
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] 수집 시작")
+    print(f"[{datetime.now(KST).strftime('%Y-%m-%d %H:%M')}] 수집 시작")
     collect_credit()
     collect_mkt_fund()
     collect_adr()
