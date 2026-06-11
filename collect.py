@@ -45,6 +45,7 @@ def kofia_fetch(obj_nm, start_dt, end_dt):
     r = requests.post(KOFIA_URL, json=payload, headers=KOFIA_HEADERS, timeout=30)
     r.raise_for_status()
     data = r.json()
+    print(f"API 응답 키: {list(data.keys())}")
     return data.get("ds1", [])
 
 def collect_credit():
@@ -88,7 +89,7 @@ def collect_mkt_fund():
     if not rows:
         print("증시자금 신규 데이터 없음")
         return
-    print(f"증시자금 API 응답 첫 번째 행: {rows[0]}")
+    print(f"증시자금 API 응답 전체 키 확인 필요")
 
     saved = 0
     for row in rows:
