@@ -89,8 +89,8 @@ with tab1:
     if df_credit.empty:
         st.warning("아직 수집된 데이터가 없습니다.")
     else:
-        df_credit["base_date"] = pd.to_datetime(df_credit["base_date"].str.replace("-", ""), format="%Y%m%d")
-        df_credit = df_credit.sort_values("base_date").reset_index(drop=True)
+        df_credit["base_date"] = pd.to_datetime(df_credit["base_date"].str.replace("-", ""), format="%Y%m%d", errors="coerce")
+        df_credit = df_credit.dropna(subset=["base_date"])
 
         # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
         def convert_credit(row):
@@ -166,8 +166,8 @@ with tab1:
     if df_fund.empty:
         st.info("증시자금 데이터 수집 대기 중입니다.")
     else:
-        df_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
-        df_fund = df_fund.sort_values("base_date").reset_index(drop=True)
+        df_fund["base_date"] = pd.to_datetime(df_fund["base_date"].str.replace("-", ""), format="%Y%m%d", errors="coerce")
+        df_fund = df_fund.dropna(subset=["base_date"])
 
         # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
         def convert_fund(row):
