@@ -58,20 +58,24 @@ def collect_credit():
         print("신용공여 신규 데이터 없음")
         return
 
+    keys = list(rows[0].keys()) if rows else []
+    print(f"신용공여 키: {keys}")
+    date_key  = keys[0] if len(keys) > 0 else "TMPY1"
+    total_key = keys[1] if len(keys) > 1 else "TMPY2"
+    kospi_key = keys[2] if len(keys) > 2 else "TMPY3"
+    kosdaq_key= keys[3] if len(keys) > 3 else "TMPY4"
+
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or list(row.values())[0] or "").strip()
-        if len(dt_str) != 8:
+        dt_str = str(row.get(date_key, "")).strip()
+        if len(dt_str) != 8 or not dt_str.isdigit():
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
-        # TMPY2=전체, TMPY3=코스피, TMPY4=코스닥 (단위: 백만원)
-        # DB 저장단위: 백만원 그대로 (dashboard에서 /100 해서 억원으로 표시)
-        vals = list(row.values())
         record = {
             "base_date": base_date,
-            "total":     float(vals[1] if len(vals) > 1 else 0),
-            "kospi":     float(vals[2] if len(vals) > 2 else 0),
-            "kosdaq":    float(vals[3] if len(vals) > 3 else 0),
+            "total":     float(row.get(total_key, 0) or 0),
+            "kospi":     float(row.get(kospi_key, 0) or 0),
+            "kosdaq":    float(row.get(kosdaq_key, 0) or 0),
             "created_at": datetime.now(KST).isoformat(),
         }
         supabase.table("credit_loan").upsert(record, on_conflict="base_date").execute()
@@ -89,18 +93,22 @@ def collect_mkt_fund():
     if not rows:
         print("증시자금 신규 데이터 없음")
         return
-    print(f"증시자금 API 응답 첫 번째 행: {rows[0]}")
+    keys = list(rows[0].keys()) if rows else []
+    print(f"증시자금 키: {keys}")
+    date_key    = keys[0] if len(keys) > 0 else "TMPY1"
+    deposit_key = keys[1] if len(keys) > 1 else "TMPY2"
+    cma_key     = keys[4] if len(keys) > 4 else "TMPY5"
 
     saved = 0
     for row in rows:
-        dt_str = str(row.get("TMPY1") or row.get("tmpy1") or list(row.values())[0] or "").strip()
-        if len(dt_str) != 8:
+        dt_str = str(row.get(date_key, "")).strip()
+        if len(dt_str) != 8 or not dt_str.isdigit():
             continue
         base_date = f"{dt_str[:4]}-{dt_str[4:6]}-{dt_str[6:8]}"
         record = {
             "base_date":   base_date,
-            "inv_deposit": float(row.get("TMPY2", 0) or 0),
-            "cma_bal":     float(row.get("TMPY5", 0) or 0),
+            "inv_deposit": float(row.get(deposit_key, 0) or 0),
+            "cma_bal":     float(row.get(cma_key, 0) or 0),
             "created_at":  datetime.now(KST).isoformat(),
         }
         supabase.table("mkt_fund").upsert(record, on_conflict="base_date").execute()
