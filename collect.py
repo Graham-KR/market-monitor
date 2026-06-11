@@ -57,7 +57,9 @@ def collect_credit():
 
     rows = kofia_fetch("STATSCU0100000070B0", start, end)
     if not rows:
-        print("신용공여 신규 데이터 없음")
+        print("증시자금 신규 데이터 없음")
+        return
+    print(f"증시자금 API 응답 첫 번째 행: {rows[0]}")
         return
 
     saved = 0
