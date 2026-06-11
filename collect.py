@@ -68,10 +68,11 @@ def collect_credit():
         # DB 저장단위: 백만원 그대로 (dashboard에서 /100 해서 억원으로 표시)
         vals = list(row.values())
         record = {
-            "base_date":   base_date,
-            "inv_deposit": float(vals[1] if len(vals) > 1 else 0),
-            "cma_bal":     float(vals[4] if len(vals) > 4 else 0),
-            "created_at":  datetime.now(KST).isoformat(),
+            "base_date": base_date,
+            "total":     float(vals[1] if len(vals) > 1 else 0),
+            "kospi":     float(vals[2] if len(vals) > 2 else 0),
+            "kosdaq":    float(vals[3] if len(vals) > 3 else 0),
+            "created_at": datetime.now(KST).isoformat(),
         }
         supabase.table("credit_loan").upsert(record, on_conflict="base_date").execute()
         saved += 1
