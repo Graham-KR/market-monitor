@@ -14,7 +14,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="시장 모니터", layout="wide")
 
 # 금투협 API 전환 기준일 (이 날짜부터 백만원 단위)
-KOFIA_START = pd.Timestamp("2026-06-11")
+KOFIA_START = pd.Timestamp("2026-06-10")
 
 @st.cache_data(ttl=3600)
 def load_credit():
