@@ -27,7 +27,10 @@ KOFIA_HEADERS = {
 def get_last_date(table):
     res = supabase.table(table).select("base_date").order("base_date", desc=True).limit(1).execute()
     if res.data:
-        return res.data[0]["base_date"].replace("-", "")
+        last = res.data[0]["base_date"].replace("-", "")
+        # 마지막 저장일 다음날부터 수집 (중복 방지 + 누락 방지)
+        last_dt = datetime.strptime(last, "%Y%m%d") + timedelta(days=1)
+        return last_dt.strftime("%Y%m%d")
     return "20220101"
 
 def kofia_fetch(obj_nm, start_dt, end_dt):
