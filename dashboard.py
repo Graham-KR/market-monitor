@@ -90,7 +90,7 @@ with tab1:
         st.warning("아직 수집된 데이터가 없습니다.")
     else:
         df_credit["base_date"] = pd.to_datetime(df_credit["base_date"])
-df_credit = df_credit.sort_values("base_date").reset_index(drop=True)
+        df_credit = df_credit.sort_values("base_date").reset_index(drop=True)
 
         # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
         def convert_credit(row):
