@@ -248,6 +248,7 @@ with tab1:
         st.info("증시자금 데이터 수집 대기 중입니다.")
     else:
         df_fund = prepare(df_fund)
+        # 참고: DB 칸 이름은 cma_bal 이지만 실제 값은 금투협 "위탁매매 미수금" (TMPV5)
         df_fund = convert_units(df_fund, ["inv_deposit", "cma_bal"])
 
         latest_fund = df_fund.iloc[-1]
@@ -256,12 +257,12 @@ with tab1:
         c1, c2 = st.columns(2)
         c1.metric("투자자예탁금", f"{latest_fund['inv_deposit']:,.0f}억",
                   f"{latest_fund['inv_deposit'] - prev_fund['inv_deposit']:+,.0f}억")
-        c2.metric("CMA 잔고",     f"{latest_fund['cma_bal']:,.0f}억",
+        c2.metric("위탁매매 미수금", f"{latest_fund['cma_bal']:,.0f}억",
                   f"{latest_fund['cma_bal'] - prev_fund['cma_bal']:+,.0f}억")
 
         fig2 = make_subplots(specs=[[{"secondary_y": True}]])
         fig2.add_trace(line_trace(df_fund, "inv_deposit", "투자자예탁금", COLOR_BLUE),  secondary_y=False)
-        fig2.add_trace(line_trace(df_fund, "cma_bal",     "CMA잔고",      COLOR_GREEN), secondary_y=True)
+        fig2.add_trace(line_trace(df_fund, "cma_bal",     "위탁매매 미수금", COLOR_GREEN), secondary_y=True)
         fig2.update_layout(
             legend=dict(orientation="h", x=0, y=1.12),
             margin=dict(l=0, r=0, t=40, b=0), height=280,
@@ -281,13 +282,13 @@ with tab1:
         show_fund["예탁금(억)"]    = show_fund["inv_deposit"].map(fmt_num)
         show_fund["예탁금 증감"]   = show_fund["inv_chg"].map(fmt_chg)
         show_fund["예탁금 증감률"] = show_fund["inv_pct"].map(fmt_pct)
-        show_fund["CMA잔고(억)"]   = show_fund["cma_bal"].map(fmt_num)
-        show_fund["CMA 증감"]      = show_fund["cma_chg"].map(fmt_chg)
-        show_fund["CMA 증감률"]    = show_fund["cma_pct"].map(fmt_pct)
+        show_fund["미수금(억)"]     = show_fund["cma_bal"].map(fmt_num)
+        show_fund["미수금 증감"]    = show_fund["cma_chg"].map(fmt_chg)
+        show_fund["미수금 증감률"]  = show_fund["cma_pct"].map(fmt_pct)
 
-        fund_chg_cols = ["예탁금 증감", "예탁금 증감률", "CMA 증감", "CMA 증감률"]
+        fund_chg_cols = ["예탁금 증감", "예탁금 증감률", "미수금 증감", "미수금 증감률"]
         fund_cols = ["날짜", "예탁금(억)", "예탁금 증감", "예탁금 증감률",
-                     "CMA잔고(억)", "CMA 증감", "CMA 증감률"]
+                     "미수금(억)", "미수금 증감", "미수금 증감률"]
         st.markdown(make_html_table(show_fund, fund_cols, fund_chg_cols), unsafe_allow_html=True)
 
     st.caption("데이터 출처: 금융투자협회 | 매일 18:00 자동 수집")
