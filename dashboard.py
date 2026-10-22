@@ -212,7 +212,7 @@ with tab1:
             yaxis=dict(tickformat=",", gridcolor="#f0f0f0"),
             plot_bgcolor="white", paper_bgcolor="white", hovermode="x unified",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="credit_line")
 
         max_days = min(len(df_credit), 250)
         days = st.slider("표시 기간 (영업일)", min_value=5, max_value=max_days, value=20, step=5)
@@ -270,7 +270,7 @@ with tab1:
         )
         fig2.update_yaxes(tickformat=",", gridcolor="#f0f0f0", secondary_y=False)
         fig2.update_yaxes(tickformat=",", showgrid=False,      secondary_y=True)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, key="fund_line")
 
         tbl_fund = df_fund.copy()
         tbl_fund = add_change(tbl_fund, "inv_deposit", "inv")
@@ -332,7 +332,7 @@ with tab2:
                     int(latest_adr[f"{market}_down"]),
                     int(latest_adr[f"{market}_lower_limit"]),
                 ]
-                st.plotly_chart(bar_chart(values), use_container_width=True)
+                st.plotly_chart(bar_chart(values), use_container_width=True, key=f"adr_bar_{market}")
 
         st.divider()
 
@@ -375,7 +375,7 @@ with tab2:
                 plot_bgcolor="white", paper_bgcolor="white",
                 hovermode="x unified",
             )
-            st.plotly_chart(fig_ma, use_container_width=True)
+            st.plotly_chart(fig_ma, use_container_width=True, key="adr_ma10")
 
         st.caption("데이터 출처: 네이버금융 | 매일 18:00 자동 수집")
 
