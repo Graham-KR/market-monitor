@@ -6,7 +6,6 @@ import traceback
 import xml.etree.ElementTree as ET
 import requests
 import pandas as pd
-from bs4 import BeautifulSoup
 from supabase import create_client
 from datetime import datetime, timezone, timedelta, date
 from urllib.parse import unquote
@@ -121,51 +120,62 @@ def collect_mkt_fund():
 
     print(f"증시자금 {saved}건 저장 완료")
 
-def collect_adr():
-    """ADR(등락비율) — 네이버 금융, 실행 당일 하루치만 저장"""
-    today = datetime.now(KST)
-    # 토/일은 장이 없으므로 저장하지 않음 (금요일 수치가 토요일 날짜로 중복 저장되는 것 방지)
-    if today.weekday() >= 5:
-        print("ADR: 주말이라 건너뜀")
-        return
+NAVER_API_HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Referer": "https://m.stock.naver.com",
+}
 
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Referer": "https://finance.naver.com"
-    }
-    result = {"base_date": today.strftime("%Y-%m-%d")}
+def _to_int(v):
+    """'1,234' 같은 문자열 숫자 → 정수"""
+    return int(str(v).replace(",", "").strip() or 0)
+
+def collect_adr():
+    """ADR(등락비율) — 네이버 증권 모바일 API (2026-10 네이버 금융 페이지 개편 대응)"""
+    result = {}
+    trade_dates = []
 
     for market, code in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
-        url = f"https://finance.naver.com/sise/sise_index.naver?code={code}"
-        r = requests.get(url, headers=headers, timeout=15)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
+        # 1) 거래일: 마지막 거래 시각에서 날짜를 가져옴
+        #    → 주말·공휴일에 실행돼도 직전 거래일 날짜로 저장되어 엉뚱한 날짜가 생기지 않음
+        basic = requests.get(f"https://m.stock.naver.com/api/index/{code}/basic",
+                             headers=NAVER_API_HEADERS, timeout=15)
+        basic.raise_for_status()
+        traded_at = basic.json().get("localTradedAt", "")
+        if len(traded_at) < 10:
+            raise ValueError(f"{code} 거래일(localTradedAt)을 찾지 못함: {traded_at!r}")
+        trade_dates.append(traded_at[:10])
 
-        text = ""
-        for tag in soup.find_all("td"):
-            t = tag.get_text(strip=True)
-            if "상승종목수" in t and "하락종목수" in t:
-                text = t
-                break
+        # 2) 상승/하락/보합/상한/하한 종목수
+        integ = requests.get(f"https://m.stock.naver.com/api/index/{code}/integration",
+                             headers=NAVER_API_HEADERS, timeout=15)
+        integ.raise_for_status()
+        info = integ.json().get("upDownStockInfo")
+        if not info:
+            raise ValueError(f"{code} upDownStockInfo 없음 (네이버 API 구조 변경 가능성)")
 
-        def extract(key, t):
-            m = re.search(key + r"(\d+)", t)
-            return int(m.group(1)) if m else 0
+        up    = _to_int(info.get("riseCount", 0))
+        down  = _to_int(info.get("fallCount", 0))
+        flat  = _to_int(info.get("steadyCount", 0))
+        upper = _to_int(info.get("upperCount", 0))
+        lower = _to_int(info.get("lowerCount", 0))
 
-        up   = extract("상승종목수", text)
-        down = extract("하락종목수", text)
-        # 페이지 구조가 바뀌어 숫자를 못 읽으면 0으로 저장하지 말고 실패 처리
+        # 숫자를 못 읽었으면 0으로 저장하지 말고 실패 처리
         if up == 0 and down == 0:
-            raise ValueError(f"{code} 상승/하락 종목수를 찾지 못함 (네이버 페이지 구조 변경 가능성)")
-        adr  = round(up / down * 100, 2) if down > 0 else 0
+            raise ValueError(f"{code} 상승/하락 종목수가 모두 0 (데이터 이상)")
+
+        adr = round(up / down * 100, 2) if down > 0 else 0
 
         result[f"{market}_up"]          = up
-        result[f"{market}_flat"]        = extract("보합종목수", text)
+        result[f"{market}_flat"]        = flat
         result[f"{market}_down"]        = down
-        result[f"{market}_upper_limit"] = extract("상한종목수", text)
-        result[f"{market}_lower_limit"] = extract("하한종목수", text)
+        result[f"{market}_upper_limit"] = upper
+        result[f"{market}_lower_limit"] = lower
         result[f"{market}_adr"]         = adr
-        print(f"{code} ADR: {adr} (상승:{up} 하락:{down})")
+        print(f"{code} ADR: {adr} (상한:{upper} 상승:{up} 보합:{flat} 하락:{down} 하한:{lower})")
+
+    if trade_dates[0] != trade_dates[1]:
+        print(f"⚠️ 코스피/코스닥 거래일 불일치: {trade_dates} → 코스피 기준 사용")
+    result["base_date"] = trade_dates[0]
 
     supabase.table("adr").upsert(result, on_conflict="base_date").execute()
     print(f"ADR 저장 완료 ({result['base_date']})")
