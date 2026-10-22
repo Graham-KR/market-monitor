@@ -166,7 +166,7 @@ with tab1:
     if df_fund.empty:
         st.info("증시자금 데이터 수집 대기 중입니다.")
     else:
-        ddf_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
+        df_fund["base_date"] = pd.to_datetime(df_fund["base_date"])
         df_fund = df_fund.sort_values("base_date").reset_index(drop=True)
 
         # 단위 분기: KOFIA_START 이후는 백만원, 이전은 원
