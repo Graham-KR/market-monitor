@@ -2,7 +2,7 @@ name: 신용거래융자 데이터 수집
 
 on:
   schedule:
-    - cron: '0 9 * * 1-6'   # UTC 09:00 = KST 18:00, 월~토
+    - cron: '3 6 * * 1-6'   # UTC 06:03 = KST 15:03, 월~토
   workflow_dispatch:
 
 # keepalive 커밋을 푸시하기 위한 쓰기 권한
