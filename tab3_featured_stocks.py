@@ -77,7 +77,7 @@ def render_tab3():
         available_dates = get_available_dates()
 
     if not available_dates:
-        st.warning("수집된 뉴스가 없습니다. 오늘 18:00 이후 자동 수집됩니다.")
+        st.warning("수집된 뉴스가 없습니다. 오늘 15:03 이후 자동 수집됩니다.")
         return
 
     min_date = datetime.strptime(available_dates[-1], "%Y-%m-%d").date()
