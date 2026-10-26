@@ -212,7 +212,8 @@ with tab1:
             yaxis=dict(tickformat=",", gridcolor="#f0f0f0"),
             plot_bgcolor="white", paper_bgcolor="white", hovermode="x unified",
         )
-        st.plotly_chart(fig, use_container_width=True, key="credit_line")
+        with st.expander("📈 융자잔고 추이 그래프 보기", expanded=False):
+            st.plotly_chart(fig, use_container_width=True, key="credit_line")
 
         max_days = min(len(df_credit), 250)
         days = st.slider("표시 기간 (영업일)", min_value=5, max_value=max_days, value=20, step=5)
@@ -271,7 +272,8 @@ with tab1:
         )
         fig2.update_yaxes(tickformat=",", gridcolor="#f0f0f0", secondary_y=False)
         fig2.update_yaxes(tickformat=",", showgrid=False,      secondary_y=True)
-        st.plotly_chart(fig2, use_container_width=True, key="fund_line")
+        with st.expander("📈 예탁금 · 미수금 추이 그래프 보기", expanded=False):
+            st.plotly_chart(fig2, use_container_width=True, key="fund_line")
 
         tbl_fund = df_fund.copy()
         tbl_fund = add_change(tbl_fund, "inv_deposit", "inv")
@@ -291,7 +293,7 @@ with tab1:
                      "미수금(억)", "미수금 증감", "미수금 증감률"]
         st.markdown(make_html_table(show_fund, fund_cols, fund_chg_cols), unsafe_allow_html=True)
 
-    st.caption("데이터 출처: 금융투자협회 | 매일 18:00 자동 수집")
+    st.caption("데이터 출처: 금융투자협회 | 매일 15:03 자동 수집")
 
 
 # ── TAB 2: ADR ────────────────────────────
@@ -322,18 +324,19 @@ with tab2:
 
         st.divider()
 
-        col1, col2 = st.columns(2)
-        for column, market, title in [(col1, "kospi", "KOSPI"), (col2, "kosdaq", "KOSDAQ")]:
-            with column:
-                st.markdown(f"#### {title} 종목 현황")
-                values = [
-                    int(latest_adr[f"{market}_upper_limit"]),
-                    int(latest_adr[f"{market}_up"]),
-                    int(latest_adr[f"{market}_flat"]),
-                    int(latest_adr[f"{market}_down"]),
-                    int(latest_adr[f"{market}_lower_limit"]),
-                ]
-                st.plotly_chart(bar_chart(values), use_container_width=True, key=f"adr_bar_{market}")
+        with st.expander("📊 종목 현황 그래프 보기 (상한·상승·보합·하락·하한)", expanded=False):
+            col1, col2 = st.columns(2)
+            for column, market, title in [(col1, "kospi", "KOSPI"), (col2, "kosdaq", "KOSDAQ")]:
+                with column:
+                    st.markdown(f"#### {title} 종목 현황")
+                    values = [
+                        int(latest_adr[f"{market}_upper_limit"]),
+                        int(latest_adr[f"{market}_up"]),
+                        int(latest_adr[f"{market}_flat"]),
+                        int(latest_adr[f"{market}_down"]),
+                        int(latest_adr[f"{market}_lower_limit"]),
+                    ]
+                    st.plotly_chart(bar_chart(values), use_container_width=True, key=f"adr_bar_{market}")
 
         st.divider()
 
@@ -360,7 +363,6 @@ with tab2:
         # 이동평균 ADR (10일)
         if len(df_adr) >= 10:
             st.divider()
-            st.markdown("#### 이동평균 ADR 추이 (10일)")
             df_adr["kospi_adr_ma10"]  = df_adr["kospi_adr"].rolling(10).mean()
             df_adr["kosdaq_adr_ma10"] = df_adr["kosdaq_adr"].rolling(10).mean()
 
@@ -376,9 +378,10 @@ with tab2:
                 plot_bgcolor="white", paper_bgcolor="white",
                 hovermode="x unified",
             )
-            st.plotly_chart(fig_ma, use_container_width=True, key="adr_ma10")
+            with st.expander("📈 이동평균 ADR 추이 (10일) 그래프 보기", expanded=False):
+                st.plotly_chart(fig_ma, use_container_width=True, key="adr_ma10")
 
-        st.caption("데이터 출처: 네이버금융 | 매일 18:00 자동 수집")
+        st.caption("데이터 출처: 네이버금융 | 매일 15:03 자동 수집")
 
 
 # ── TAB 3: 특징주 ─────────────────────────
