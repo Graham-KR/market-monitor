@@ -32,7 +32,7 @@ BAR_LABELS  = ["상한", "상승", "보합", "하락", "하한"]
 # ══════════════════════════════════════════
 # 데이터 로드
 # ══════════════════════════════════════════
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=600)  # 10분마다 자동으로 새 데이터 확인
 def load_table(name: str, limit: int) -> pd.DataFrame:
     res = (
         supabase.table(name)
@@ -169,6 +169,12 @@ def adr_comment(adr: float) -> str:
 # ══════════════════════════════════════════
 # 탭 구성
 # ══════════════════════════════════════════
+# 새로고침 버튼: 저장해 둔 데이터를 지우고 Supabase에서 다시 불러옴
+_, refresh_col = st.columns([6, 1])
+if refresh_col.button("🔄 새로고침", use_container_width=True):
+    st.cache_data.clear()
+    st.rerun()
+
 tab1, tab2, tab3 = st.tabs(["📊 신용거래융자 & 증시자금", "📈 ADR", "📰 특징주"])
 
 
