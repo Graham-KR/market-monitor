@@ -221,8 +221,12 @@ with tab1:
         with st.expander("📈 융자잔고 추이 그래프 보기", expanded=False):
             st.plotly_chart(fig, use_container_width=True, key="credit_line")
 
-        max_days = min(len(df_credit), 250)
-        days = st.slider("표시 기간 (영업일)", min_value=5, max_value=max_days, value=20, step=5)
+        max_days = len(df_credit)  # 저장된 전체 영업일 수
+        input_col, _ = st.columns([1, 3])
+        days = int(input_col.number_input(
+            f"표시 기간 (영업일, 최대 {max_days:,}일)",
+            min_value=1, max_value=max_days, value=min(20, max_days), step=1,
+        ))
         st.subheader(f"최근 {days}일 기록")
 
         tbl = df_credit.copy()
