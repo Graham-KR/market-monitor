@@ -312,7 +312,7 @@ with tab1:
                      "미수금(억)", "미수금 증감", "미수금 증감률"]
         st.markdown(make_html_table(show_fund, fund_cols, fund_chg_cols), unsafe_allow_html=True)
 
-    st.caption("데이터 출처: 금융투자협회 | 평일 15:05~15:30 자동 수집 (미수집 시 5분 간격 재시도) · 18:03 최종 확인 (월~토)")
+    st.caption("데이터 출처: 금융투자협회 | 평일 15:05\\~15:30 자동 수집 (미수집 시 5분 간격 재시도) · 18:03 최종 확인 (월\\~토)")
 
 
 # ── TAB 2: ADR ────────────────────────────
@@ -400,7 +400,7 @@ with tab2:
             with st.expander("📈 이동평균 ADR 추이 (10일) 그래프 보기", expanded=False):
                 st.plotly_chart(fig_ma, use_container_width=True, key="adr_ma10")
 
-        st.caption("데이터 출처: 네이버금융 | 평일 15:05~15:30 장중 값 수집 · 18:03 마감 값으로 갱신 (월~토)")
+        st.caption("데이터 출처: 네이버금융 | 평일 15:05\\~15:30 장중 값 수집 · 18:03 마감 값으로 갱신 (월\\~토)")
 
 
 # ── TAB 3: 특징주 ─────────────────────────
